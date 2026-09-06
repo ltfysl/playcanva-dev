@@ -1,8 +1,7 @@
 (async () => {
     pc.WasmModule.setConfig('Ammo', {
-        glueUrl: 'https://code.playcanvas.com/ammo.wasm.js',
-        wasmUrl: 'https://code.playcanvas.com/ammo.wasm.wasm',
-        fallbackUrl: 'https://code.playcanvas.com/ammo.js'
+        glueUrl: 'lib/ammo/ammo.wasm.js',
+        wasmUrl: 'lib/ammo/ammo.wasm.wasm'
     });
 
     await pc.WasmModule.getInstance('Ammo');

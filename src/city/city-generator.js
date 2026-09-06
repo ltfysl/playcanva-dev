@@ -15,6 +15,7 @@ class CityGenerator {
         this.createStarterHome();
         this.createCafe();
         this.createCoworkSpace();
+        this.createSkylineProps();
         
         console.log(`City generated with ${this.districts.length} districts`);
     }
@@ -178,8 +179,6 @@ class CityGenerator {
             districtId
         );
         
-        cowork.setEnterable(true);
-        
         const coworkLocation = new LocationData(locationId, BuildingKind.COWORK, {
             name: 'Hub Cowork',
             unlockState: UnlockState.LOCKED,
@@ -199,5 +198,65 @@ class CityGenerator {
         });
         
         this.cityModule.registerLocation(coworkLocation);
+    }
+    
+    createSkylineProps() {
+        const skylineBuildings = [
+            { pos: new pc.Vec3(-80, 0, 80), scale: { x: 25, y: 35, z: 25 }, color: new pc.Color(0.3, 0.35, 0.4) },
+            { pos: new pc.Vec3(-60, 0, -70), scale: { x: 20, y: 45, z: 20 }, color: new pc.Color(0.35, 0.4, 0.45) },
+            { pos: new pc.Vec3(70, 0, -80), scale: { x: 30, y: 40, z: 30 }, color: new pc.Color(0.32, 0.37, 0.42) },
+            { pos: new pc.Vec3(85, 0, 60), scale: { x: 22, y: 38, z: 22 }, color: new pc.Color(0.33, 0.38, 0.43) },
+            { pos: new pc.Vec3(-90, 0, -50), scale: { x: 28, y: 42, z: 28 }, color: new pc.Color(0.31, 0.36, 0.41) }
+        ];
+        
+        skylineBuildings.forEach((config, idx) => {
+            const prop = new pc.Entity(`skyline-prop-${idx}`);
+            
+            const body = new pc.Entity('body');
+            body.addComponent('render', {
+                type: 'box',
+                material: this.createSkylineMaterial(config.color)
+            });
+            body.setLocalScale(config.scale.x, config.scale.y, config.scale.z);
+            body.setLocalPosition(0, config.scale.y / 2, 0);
+            prop.addChild(body);
+            
+            prop.setPosition(config.pos);
+            this.app.root.addChild(prop);
+        });
+        
+        const warmHomePos = new pc.Vec3(45, 0, 35);
+        const warmHome = new pc.Entity('warm-home-silhouette');
+        
+        const homeBody = new pc.Entity('body');
+        homeBody.addComponent('render', {
+            type: 'box',
+            material: this.createSkylineMaterial(new pc.Color(0.5, 0.42, 0.35))
+        });
+        homeBody.setLocalScale(14, 12, 14);
+        homeBody.setLocalPosition(0, 6, 0);
+        warmHome.addChild(homeBody);
+        
+        const roof = new pc.Entity('roof');
+        roof.addComponent('render', {
+            type: 'cone',
+            material: this.createSkylineMaterial(new pc.Color(0.6, 0.48, 0.35))
+        });
+        roof.setLocalScale(10, 5, 10);
+        roof.setLocalPosition(0, 12 + 2.5, 0);
+        roof.setLocalEulerAngles(0, 45, 0);
+        warmHome.addChild(roof);
+        
+        warmHome.setPosition(warmHomePos);
+        this.app.root.addChild(warmHome);
+    }
+    
+    createSkylineMaterial(color) {
+        const material = new pc.StandardMaterial();
+        material.diffuse = color;
+        material.specular = new pc.Color(0.1, 0.1, 0.1);
+        material.shininess = 15;
+        material.update();
+        return material;
     }
 }

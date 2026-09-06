@@ -42,6 +42,7 @@ class PlayerController {
     
     setupMouseLock() {
         const canvas = this.app.graphicsDevice.canvas;
+        let hasLockedOnce = false;
         
         canvas.addEventListener('click', () => {
             if (!this.isLocked) {
@@ -51,6 +52,18 @@ class PlayerController {
         
         document.addEventListener('pointerlockchange', () => {
             this.isLocked = document.pointerLockElement === canvas;
+            
+            if (this.isLocked && !hasLockedOnce) {
+                hasLockedOnce = true;
+                const controlsHint = document.getElementById('controls-hint');
+                if (controlsHint) {
+                    controlsHint.style.transition = 'opacity 0.5s ease-out';
+                    controlsHint.style.opacity = '0';
+                    setTimeout(() => {
+                        controlsHint.style.display = 'none';
+                    }, 500);
+                }
+            }
         });
         
         document.addEventListener('pointerlockerror', () => {
