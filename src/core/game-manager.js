@@ -26,10 +26,9 @@ class GameManager {
     
     setupScene() {
         this.app.scene.ambientLight = new pc.Color(0.3, 0.3, 0.4);
-        this.app.scene.fog = pc.FOG_LINEAR;
-        this.app.scene.fogColor = new pc.Color(0.6, 0.7, 0.8);
         this.app.scene.fogStart = 50;
         this.app.scene.fogEnd = 300;
+        this.app.scene.fogColor = new pc.Color(0.6, 0.7, 0.8);
     }
     
     createCamera() {
@@ -84,9 +83,14 @@ class GameManager {
         const playerPos = this.player.getPosition();
         
         for (const building of this.buildings) {
-            if (building.canEnter && building.isNearby(playerPos, GameConfig.player.interactionDistance)) {
-                this.enterBuilding(building);
-                return;
+            if (building.isNearby(playerPos, GameConfig.player.interactionDistance)) {
+                const locationId = new LocationId(building.districtId, building.id);
+                const location = this.cityModule.getLocation(locationId);
+                
+                if (location && location.canEnter()) {
+                    this.enterBuilding(building);
+                    return;
+                }
             }
         }
     }
@@ -99,7 +103,7 @@ class GameManager {
         this.updateLocationIndicator(building.name + ' (Interior)');
         
         if (this.cityModule) {
-            const locationId = new LocationId('downtown', building.id);
+            const locationId = new LocationId(building.districtId, building.id);
             this.cityModule.enterLocation(locationId);
         }
     }
@@ -110,7 +114,7 @@ class GameManager {
         console.log('Exiting building');
         
         if (this.cityModule) {
-            const locationId = new LocationId('downtown', this.currentBuilding.id);
+            const locationId = new LocationId(this.currentBuilding.districtId, this.currentBuilding.id);
             this.cityModule.exitLocation(locationId);
         }
         

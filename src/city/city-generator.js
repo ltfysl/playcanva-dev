@@ -28,6 +28,15 @@ class CityGenerator {
             material: this.createGroundMaterial()
         });
         
+        ground.addComponent('collision', {
+            type: 'box',
+            halfExtents: new pc.Vec3(0.5, 0.5, 0.5)
+        });
+        
+        ground.addComponent('rigidbody', {
+            type: 'static'
+        });
+        
         ground.setLocalScale(groundSize, 1, groundSize);
         ground.setLocalPosition(0, -0.5, 0);
         ground.setLocalEulerAngles(-90, 0, 0);
@@ -61,7 +70,8 @@ class CityGenerator {
             GameConfig.city.blockSize
         );
         
-        const locationId = new LocationId('downtown', 'starter-home');
+        const districtId = downtownDistrict.id;
+        const locationId = new LocationId(districtId, 'starter-home');
         
         const home = new Building(
             this.app,
@@ -70,7 +80,8 @@ class CityGenerator {
             'Your Apartment',
             homePosition,
             'home',
-            UnlockState.OWNED
+            UnlockState.OWNED,
+            districtId
         );
         
         home.setEnterable(true);
@@ -102,13 +113,17 @@ class CityGenerator {
     }
     
     createCafe() {
+        const downtownDistrict = this.districts.find(d => d.id === 'downtown');
+        if (!downtownDistrict) return;
+        
         const cafePosition = new pc.Vec3(
             -GameConfig.city.blockSize,
             0,
             GameConfig.city.blockSize * 1.5
         );
         
-        const locationId = new LocationId('downtown', 'the-bean-cafe');
+        const districtId = downtownDistrict.id;
+        const locationId = new LocationId(districtId, 'the-bean-cafe');
         
         const cafe = new Building(
             this.app,
@@ -117,10 +132,11 @@ class CityGenerator {
             'The Bean Café',
             cafePosition,
             'cafe',
-            UnlockState.AVAILABLE
+            UnlockState.AVAILABLE,
+            districtId
         );
         
-        cafe.setEnterable(false);
+        cafe.setEnterable(true);
         
         const cafeLocation = new LocationData(locationId, BuildingKind.CAFE, {
             name: 'The Bean Café',
@@ -139,13 +155,17 @@ class CityGenerator {
     }
     
     createCoworkSpace() {
+        const downtownDistrict = this.districts.find(d => d.id === 'downtown');
+        if (!downtownDistrict) return;
+        
         const coworkPosition = new pc.Vec3(
             GameConfig.city.blockSize * 2,
             0,
             -GameConfig.city.blockSize
         );
         
-        const locationId = new LocationId('downtown', 'hub-cowork');
+        const districtId = downtownDistrict.id;
+        const locationId = new LocationId(districtId, 'hub-cowork');
         
         const cowork = new Building(
             this.app,
@@ -154,10 +174,11 @@ class CityGenerator {
             'Hub Cowork',
             coworkPosition,
             'cowork',
-            UnlockState.LOCKED
+            UnlockState.LOCKED,
+            districtId
         );
         
-        cowork.setEnterable(false);
+        cowork.setEnterable(true);
         
         const coworkLocation = new LocationData(locationId, BuildingKind.COWORK, {
             name: 'Hub Cowork',

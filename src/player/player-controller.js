@@ -23,8 +23,14 @@ class PlayerController {
         });
         
         this.entity.addComponent('rigidbody', {
-            type: 'kinematic',
-            mass: 70
+            type: 'dynamic',
+            mass: 70,
+            friction: 0.5,
+            restitution: 0,
+            linearDamping: 0.99,
+            angularDamping: 0.99,
+            angularFactor: new pc.Vec3(0, 0, 0),
+            linearFactor: new pc.Vec3(1, 0, 1)
         });
         
         this.app.root.addChild(this.entity);
@@ -121,20 +127,29 @@ class PlayerController {
             
             const speed = this.isSprinting ? GameConfig.player.sprintSpeed : GameConfig.player.moveSpeed;
             this.velocity.copy(worldMoveDir.mulScalar(speed));
+            
+            const rigidbody = this.entity.rigidbody;
+            const currentVel = rigidbody.linearVelocity;
+            const targetVel = new pc.Vec3(this.velocity.x, currentVel.y, this.velocity.z);
+            rigidbody.linearVelocity = targetVel;
         } else {
-            this.velocity.set(0, 0, 0);
+            const rigidbody = this.entity.rigidbody;
+            const currentVel = rigidbody.linearVelocity;
+            rigidbody.linearVelocity = new pc.Vec3(0, currentVel.y, 0);
         }
         
         const pos = this.entity.getPosition();
-        pos.add(this.velocity.clone().mulScalar(dt));
-        
-        pos.y = GameConfig.player.height / 2;
-        
-        this.entity.setPosition(pos);
+        if (pos.y < GameConfig.player.height / 2) {
+            this.entity.rigidbody.teleport(pos.x, GameConfig.player.height / 2, pos.z);
+            const rigidbody = this.entity.rigidbody;
+            const vel = rigidbody.linearVelocity;
+            vel.y = 0;
+            rigidbody.linearVelocity = vel;
+        }
     }
     
     setPosition(x, y, z) {
-        this.entity.setPosition(x, y + GameConfig.player.height / 2, z);
+        this.entity.rigidbody.teleport(x, y + GameConfig.player.height / 2, z);
     }
     
     getPosition() {

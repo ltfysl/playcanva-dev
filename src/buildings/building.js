@@ -1,5 +1,5 @@
 class Building {
-    constructor(app, gameManager, id, name, position, kind, unlockState) {
+    constructor(app, gameManager, id, name, position, kind, unlockState, districtId) {
         this.app = app;
         this.gameManager = gameManager;
         this.id = id;
@@ -7,8 +7,8 @@ class Building {
         this.position = position;
         this.kind = kind;
         this.unlockState = unlockState;
+        this.districtId = districtId;
         this.entity = null;
-        this.canEnter = false;
         this.interior = null;
         this.doorPosition = null;
         this.kindConfig = GameConfig.buildingKinds[kind] || GameConfig.buildingKinds.office;
@@ -28,6 +28,13 @@ class Building {
         mainBody.addComponent('render', {
             type: 'box',
             material: this.createMaterial(color)
+        });
+        mainBody.addComponent('collision', {
+            type: 'box',
+            halfExtents: new pc.Vec3(0.5, 0.5, 0.5)
+        });
+        mainBody.addComponent('rigidbody', {
+            type: 'static'
         });
         mainBody.setLocalScale(baseScale.x, baseScale.y, baseScale.z);
         mainBody.setLocalPosition(0, baseScale.y / 2, 0);
@@ -167,8 +174,6 @@ class Building {
     }
     
     setEnterable(enterable) {
-        this.canEnter = enterable;
-        
         if (enterable) {
             this.createDoor();
             this.createPorch();
@@ -176,6 +181,8 @@ class Building {
     }
     
     createDoor() {
+        const baseScale = this.kindConfig.baseScale;
+        
         const door = new pc.Entity('door');
         door.addComponent('render', {
             type: 'box',
@@ -183,12 +190,12 @@ class Building {
         });
         
         door.setLocalScale(2.5, 3.5, 0.2);
-        door.setPosition(
-            this.doorPosition.x,
+        door.setLocalPosition(
+            0,
             1.75,
-            this.doorPosition.z - 0.5
+            baseScale.z / 2 + 1
         );
-        this.app.root.addChild(door);
+        this.entity.addChild(door);
         
         const doorFrame = new pc.Entity('door-frame');
         doorFrame.addComponent('render', {
@@ -196,15 +203,17 @@ class Building {
             material: this.createMaterial(this.kindConfig.accentColor)
         });
         doorFrame.setLocalScale(3, 4, 0.3);
-        doorFrame.setPosition(
-            this.doorPosition.x,
+        doorFrame.setLocalPosition(
+            0,
             2,
-            this.doorPosition.z - 0.6
+            baseScale.z / 2 + 0.9
         );
-        this.app.root.addChild(doorFrame);
+        this.entity.addChild(doorFrame);
     }
     
     createPorch() {
+        const baseScale = this.kindConfig.baseScale;
+        
         const porch = new pc.Entity('porch');
         porch.addComponent('render', {
             type: 'box',
@@ -212,12 +221,12 @@ class Building {
         });
         
         porch.setLocalScale(4, 0.3, 2);
-        porch.setPosition(
-            this.doorPosition.x,
+        porch.setLocalPosition(
+            0,
             0.15,
-            this.doorPosition.z
+            baseScale.z / 2 + 1.5
         );
-        this.app.root.addChild(porch);
+        this.entity.addChild(porch);
     }
     
     createDoorMaterial() {
@@ -260,10 +269,10 @@ class Building {
         
         this.entity.enabled = true;
         
-        player.setPosition(
-            this.doorPosition.x,
-            0,
-            this.doorPosition.z + 2
-        );
+        const exitX = this.doorPosition.x;
+        const exitY = GameConfig.player.height / 2;
+        const exitZ = this.doorPosition.z + 2;
+        
+        player.entity.rigidbody.teleport(exitX, exitY, exitZ);
     }
 }
