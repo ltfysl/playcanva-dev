@@ -204,6 +204,26 @@ new ActivitySlot('deep-work', {
 })
 ```
 
+## Verification
+
+**PRs that change runtime behavior MUST include verification evidence.**
+
+Use the verification skill at `.cursor/skills/verify-dev-tycoon/SKILL.md` to manually test gameplay features before merging:
+
+```bash
+# Cloud agents: read and execute the skill
+# Evidence is saved to artifacts/verify-dev-tycoon/
+```
+
+**Required for PRs that modify:**
+- Player locomotion (movement, camera, input handling)
+- Building interaction (enter/exit, proximity detection)
+- Minimap rendering (player tracking, district layout)
+- Day/night cycle (lighting, shadows, color temperature)
+- Any other runtime gameplay or rendering changes
+
+**Quality gate**: No GitHub Actions CI. Manual verification is the quality gate. Commit evidence artifacts to your PR branch.
+
 ## Status
 
 ✅ **Complete**: City hub foundation, player locomotion, building system, lighting, minimap  
