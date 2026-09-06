@@ -13,24 +13,30 @@ class GameManager {
     }
     
     initialize() {
-        this.setupScene();
-        this.createCamera();
-        this.createPlayer();
-        this.generateCity();
-        this.setupLighting();
-        this.setupUI();
-        this.setupInputHandlers();
-        
-        console.log('Game Manager initialized');
+        try {
+            this.setupScene();
+            this.createCamera();
+            this.createPlayer();
+            this.generateCity();
+            this.setupLighting();
+            this.setupUI();
+            this.setupInputHandlers();
+            
+            console.log('Game Manager initialized');
+        } catch (error) {
+            console.error('GameManager initialization failed:', error.message);
+            console.error('Stack trace:', error.stack);
+            throw error;
+        }
     }
     
     setupScene() {
         this.app.scene.ambientLight = new pc.Color(0.35, 0.4, 0.5);
-        this.app.scene.fog = pc.FOG_LINEAR;
-        this.app.scene.fogStart = 60;
-        this.app.scene.fogEnd = 250;
-        this.app.scene.fogColor = new pc.Color(0.55, 0.65, 0.75);
-        this.app.scene.fogDensity = 0.002;
+        this.app.scene.fog.type = pc.FOG_LINEAR;
+        this.app.scene.fog.start = 60;
+        this.app.scene.fog.end = 250;
+        this.app.scene.fog.color = new pc.Color(0.55, 0.65, 0.75);
+        this.app.scene.fog.density = 0.002;
         
         this.createSkyGradient();
     }

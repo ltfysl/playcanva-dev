@@ -135,7 +135,7 @@ class LightingSystem {
             dayProgress
         );
         
-        this.app.scene.fogColor = fogColor;
+        this.app.scene.fog.color = fogColor;
     }
     
     setTimeOfDay(time) {
