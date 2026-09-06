@@ -1,12 +1,11 @@
-(async () => {
-    pc.WasmModule.setConfig('Ammo', {
-        glueUrl: 'https://code.playcanvas.com/ammo.wasm.js',
-        wasmUrl: 'https://code.playcanvas.com/ammo.wasm.wasm',
-        fallbackUrl: 'https://code.playcanvas.com/ammo.js'
-    });
+pc.WasmModule.setConfig('Ammo', {
+    glueUrl: 'lib/ammo/ammo.wasm.js',
+    wasmUrl: 'lib/ammo/ammo.wasm.wasm'
+});
 
-    await pc.WasmModule.getInstance('Ammo');
-
+pc.WasmModule.getInstance('Ammo', function(ammo) {
+    window.Ammo = ammo;
+    
     const canvas = document.getElementById('application-canvas');
 
     const app = new pc.Application(canvas, {
@@ -48,4 +47,4 @@
 
     window.app = app;
     window.gameManager = gameManager;
-})();
+});

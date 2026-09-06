@@ -15,6 +15,7 @@ class CityGenerator {
         this.createStarterHome();
         this.createCafe();
         this.createCoworkSpace();
+        this.createSkylineProps();
         
         console.log(`City generated with ${this.districts.length} districts`);
     }
@@ -136,8 +137,6 @@ class CityGenerator {
             districtId
         );
         
-        cafe.setEnterable(true);
-        
         const cafeLocation = new LocationData(locationId, BuildingKind.CAFE, {
             name: 'The Bean Café',
             unlockState: UnlockState.AVAILABLE,
@@ -178,8 +177,6 @@ class CityGenerator {
             districtId
         );
         
-        cowork.setEnterable(true);
-        
         const coworkLocation = new LocationData(locationId, BuildingKind.COWORK, {
             name: 'Hub Cowork',
             unlockState: UnlockState.LOCKED,
@@ -199,5 +196,47 @@ class CityGenerator {
         });
         
         this.cityModule.registerLocation(coworkLocation);
+    }
+    
+    createSkylineProps() {
+        const skylineBuildings = [
+            { pos: new pc.Vec3(-90, 0, 80), scale: { x: 28, y: 45, z: 28 }, color: GameConfig.colors.tech },
+            { pos: new pc.Vec3(-75, 0, -85), scale: { x: 22, y: 38, z: 22 }, color: GameConfig.colors.industrial },
+            { pos: new pc.Vec3(85, 0, -75), scale: { x: 32, y: 50, z: 32 }, color: GameConfig.colors.commercial },
+            { pos: new pc.Vec3(95, 0, 70), scale: { x: 25, y: 42, z: 25 }, color: GameConfig.colors.startup },
+            { pos: new pc.Vec3(-105, 0, -40), scale: { x: 30, y: 55, z: 30 }, color: GameConfig.colors.corporate },
+            { pos: new pc.Vec3(70, 0, 95), scale: { x: 20, y: 35, z: 20 }, color: GameConfig.colors.creative },
+            { pos: new pc.Vec3(-60, 0, 105), scale: { x: 26, y: 40, z: 26 }, color: GameConfig.colors.dev },
+            { pos: new pc.Vec3(110, 0, -45), scale: { x: 24, y: 48, z: 24 }, color: GameConfig.colors.residential },
+            { pos: new pc.Vec3(-85, 0, 55), scale: { x: 18, y: 32, z: 18 }, color: new pc.Color(0.4, 0.5, 0.65) },
+            { pos: new pc.Vec3(60, 0, -100), scale: { x: 28, y: 44, z: 28 }, color: new pc.Color(0.45, 0.35, 0.55) },
+            { pos: new pc.Vec3(-100, 0, -70), scale: { x: 22, y: 36, z: 22 }, color: new pc.Color(0.35, 0.45, 0.4) },
+            { pos: new pc.Vec3(80, 0, 85), scale: { x: 26, y: 46, z: 26 }, color: new pc.Color(0.5, 0.4, 0.45) }
+        ];
+        
+        skylineBuildings.forEach((config, idx) => {
+            const prop = new pc.Entity(`skyline-prop-${idx}`);
+            
+            const body = new pc.Entity('body');
+            body.addComponent('render', {
+                type: 'box',
+                material: this.createSkylineMaterial(config.color)
+            });
+            body.setLocalScale(config.scale.x, config.scale.y, config.scale.z);
+            body.setLocalPosition(0, config.scale.y / 2, 0);
+            prop.addChild(body);
+            
+            prop.setPosition(config.pos);
+            this.app.root.addChild(prop);
+        });
+    }
+    
+    createSkylineMaterial(color) {
+        const material = new pc.StandardMaterial();
+        material.diffuse = color;
+        material.specular = new pc.Color(0.1, 0.1, 0.1);
+        material.shininess = 15;
+        material.update();
+        return material;
     }
 }
