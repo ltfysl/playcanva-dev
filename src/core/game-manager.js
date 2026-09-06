@@ -10,6 +10,8 @@ class GameManager {
         this.currentBuilding = null;
         this.districts = [];
         this.buildings = [];
+        this.freelanceSystem = null;
+        this.solHUD = null;
     }
     
     initialize() {
@@ -92,6 +94,36 @@ class GameManager {
     
     setupUI() {
         this.minimap = new Minimap(this);
+        this.solHUD = new SolHUD();
+        this.setupFreelanceListeners();
+    }
+    
+    setupFreelanceListeners() {
+        const checkFreelanceSystem = () => {
+            if (this.freelanceSystem) {
+                this.freelanceSystem.on('jobOffered', (data) => {
+                    const payout = data.job.payoutStub.amount;
+                    this.solHUD.showJobOffer(data.job.name, payout);
+                });
+                
+                this.freelanceSystem.on('jobAccepted', (data) => {
+                    this.freelanceSystem.startJob();
+                });
+                
+                this.freelanceSystem.on('jobStarted', (data) => {
+                    this.solHUD.showInProgress();
+                });
+                
+                this.freelanceSystem.on('jobPaid', (data) => {
+                    this.solHUD.showPayout(data.payout.amount);
+                    console.log('Job paid:', data.payout.amount, 'New balance:', data.newBalance);
+                });
+            } else {
+                setTimeout(checkFreelanceSystem, 100);
+            }
+        };
+        
+        checkFreelanceSystem();
     }
     
     setupInputHandlers() {
@@ -104,10 +136,38 @@ class GameManager {
     
     handleInteraction() {
         if (this.isInBuilding) {
+            if (this.tryFreelanceInteraction()) {
+                return;
+            }
             this.exitBuilding();
         } else {
+            if (this.tryFreelanceInteraction()) {
+                return;
+            }
             this.tryEnterBuilding();
         }
+    }
+    
+    tryFreelanceInteraction() {
+        if (!this.freelanceSystem || !this.solHUD) return false;
+        
+        const currentJob = this.freelanceSystem.getCurrentJob();
+        if (!currentJob) return false;
+        
+        const hudState = this.solHUD.getCurrentState();
+        
+        if (hudState === 'offered' && currentJob.state === 'offered') {
+            this.freelanceSystem.acceptJob();
+            return true;
+        }
+        
+        if (hudState === 'inProgress' && currentJob.state === 'inProgress') {
+            this.freelanceSystem.completeJob();
+            this.freelanceSystem.payoutJob();
+            return true;
+        }
+        
+        return false;
     }
     
     tryEnterBuilding() {
@@ -174,6 +234,10 @@ class GameManager {
         
         if (this.minimap) {
             this.minimap.update();
+        }
+        
+        if (this.freelanceSystem) {
+            this.freelanceSystem.update(dt);
         }
         
         this.checkDistrictTransition();

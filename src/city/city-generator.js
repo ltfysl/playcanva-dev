@@ -137,20 +137,31 @@ class CityGenerator {
             districtId
         );
         
+        cafe.setEnterable(true);
+        
+        const interior = new CafeInterior(this.app, this.gameManager, cafe);
+        cafe.setInterior(interior);
+        
         const cafeLocation = new LocationData(locationId, BuildingKind.CAFE, {
             name: 'The Bean Café',
             unlockState: UnlockState.AVAILABLE,
             position: cafePosition,
             activitySlots: [
-                new ActivitySlot('coffee-networking', {
-                    name: 'Network over Coffee',
-                    skillTags: [],
-                    durationHint: 60
+                new ActivitySlot('cafe-bugfix-1', {
+                    name: 'Quick bugfix',
+                    skillTags: ['coding'],
+                    unlockRule: null,
+                    durationHint: 30,
+                    kind: 'freelance',
+                    payoutStub: { currency: 'cash', amount: 50 }
                 })
             ]
         });
         
         this.cityModule.registerLocation(cafeLocation);
+        
+        this.freelanceSystem = new FreelanceSystem(this.cityModule, locationId);
+        this.gameManager.freelanceSystem = this.freelanceSystem;
     }
     
     createCoworkSpace() {
