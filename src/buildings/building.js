@@ -61,47 +61,51 @@ class Building {
     }
     
     createPitchedRoof(baseScale, color) {
-        const roofHeight = baseScale.y * 0.45;
-        const roofWidth = baseScale.x * 1.15;
-        const roofDepth = baseScale.z * 1.15;
+        const roofHeight = baseScale.y * 0.5;
+        const roofWidth = baseScale.x * 1.2;
+        const roofDepth = baseScale.z * 1.2;
+        const ridgeHeight = baseScale.y + roofHeight;
         
-        const roof1 = new pc.Entity('roof-slope-1');
-        roof1.addComponent('render', {
+        const slopePlaneWidth = Math.sqrt((roofHeight * roofHeight) + (roofWidth * roofWidth / 4));
+        const slopeAngle = Math.atan2(roofHeight, roofWidth / 2) * pc.math.RAD_TO_DEG;
+        
+        const roofSlopeLeft = new pc.Entity('roof-slope-left');
+        roofSlopeLeft.addComponent('render', {
             type: 'box',
             material: this.createMaterial(color)
         });
-        roof1.setLocalScale(roofWidth, 0.3, roofDepth / 2);
-        roof1.setLocalPosition(0, baseScale.y + roofHeight / 2, roofDepth / 4);
-        roof1.setLocalEulerAngles(25, 0, 0);
-        this.entity.addChild(roof1);
+        roofSlopeLeft.setLocalScale(slopePlaneWidth, 0.25, roofDepth);
+        roofSlopeLeft.setLocalPosition(-roofWidth / 4, baseScale.y + roofHeight / 2, 0);
+        roofSlopeLeft.setLocalEulerAngles(0, 0, -slopeAngle);
+        this.entity.addChild(roofSlopeLeft);
         
-        const roof2 = new pc.Entity('roof-slope-2');
-        roof2.addComponent('render', {
+        const roofSlopeRight = new pc.Entity('roof-slope-right');
+        roofSlopeRight.addComponent('render', {
             type: 'box',
             material: this.createMaterial(color)
         });
-        roof2.setLocalScale(roofWidth, 0.3, roofDepth / 2);
-        roof2.setLocalPosition(0, baseScale.y + roofHeight / 2, -roofDepth / 4);
-        roof2.setLocalEulerAngles(-25, 0, 0);
-        this.entity.addChild(roof2);
+        roofSlopeRight.setLocalScale(slopePlaneWidth, 0.25, roofDepth);
+        roofSlopeRight.setLocalPosition(roofWidth / 4, baseScale.y + roofHeight / 2, 0);
+        roofSlopeRight.setLocalEulerAngles(0, 0, slopeAngle);
+        this.entity.addChild(roofSlopeRight);
         
-        const gableLeft = new pc.Entity('roof-gable-left');
-        gableLeft.addComponent('render', {
+        const gableFront = new pc.Entity('gable-front');
+        gableFront.addComponent('render', {
             type: 'box',
-            material: this.createMaterial(color)
+            material: this.createMaterial(new pc.Color(color.r * 0.85, color.g * 0.85, color.b * 0.85))
         });
-        gableLeft.setLocalScale(0.2, roofHeight * 0.8, roofDepth);
-        gableLeft.setLocalPosition(roofWidth / 2, baseScale.y + roofHeight * 0.4, 0);
-        this.entity.addChild(gableLeft);
+        gableFront.setLocalScale(roofWidth, roofHeight * 0.1, 0.3);
+        gableFront.setLocalPosition(0, ridgeHeight, roofDepth / 2);
+        this.entity.addChild(gableFront);
         
-        const gableRight = new pc.Entity('roof-gable-right');
-        gableRight.addComponent('render', {
+        const gableBack = new pc.Entity('gable-back');
+        gableBack.addComponent('render', {
             type: 'box',
-            material: this.createMaterial(color)
+            material: this.createMaterial(new pc.Color(color.r * 0.85, color.g * 0.85, color.b * 0.85))
         });
-        gableRight.setLocalScale(0.2, roofHeight * 0.8, roofDepth);
-        gableRight.setLocalPosition(-roofWidth / 2, baseScale.y + roofHeight * 0.4, 0);
-        this.entity.addChild(gableRight);
+        gableBack.setLocalScale(roofWidth, roofHeight * 0.1, 0.3);
+        gableBack.setLocalPosition(0, ridgeHeight, -roofDepth / 2);
+        this.entity.addChild(gableBack);
     }
     
     createFlatRoof(baseScale, color) {
