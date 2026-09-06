@@ -136,6 +136,9 @@ class GameManager {
     
     handleInteraction() {
         if (this.isInBuilding) {
+            if (this.tryFreelanceInteraction()) {
+                return;
+            }
             this.exitBuilding();
         } else {
             if (this.tryFreelanceInteraction()) {

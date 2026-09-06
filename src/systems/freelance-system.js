@@ -104,14 +104,27 @@ class FreelanceSystem {
     }
     
     initializeCafeJob() {
+        const cafeLocation = this.cityModule.getLocation(this.cafeLocationId);
+        if (!cafeLocation) {
+            console.warn('Cafe location not found');
+            return;
+        }
+        
+        const activitySlots = cafeLocation.getActivitySlots();
+        if (activitySlots.length === 0) {
+            console.warn('No activity slots found in cafe');
+            return;
+        }
+        
+        const slot = activitySlots[0];
         this.currentJob = new FreelanceJob({
-            id: 'cafe-bugfix-1',
-            name: 'Quick bugfix',
-            skillTags: ['coding'],
-            unlockRule: null,
-            durationHint: 30,
-            kind: 'freelance',
-            payoutStub: { currency: 'cash', amount: 50 }
+            id: slot.id,
+            name: slot.name,
+            skillTags: slot.skillTags || [],
+            unlockRule: slot.unlockRule || null,
+            durationHint: slot.durationHint || 30,
+            kind: slot.kind || 'freelance',
+            payoutStub: slot.payoutStub || { currency: 'cash', amount: 0 }
         });
     }
     

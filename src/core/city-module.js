@@ -110,6 +110,8 @@ class ActivitySlot {
         this.durationHint = config.durationHint || 60;
         this.name = config.name || id;
         this.description = config.description || '';
+        this.kind = config.kind || 'activity';
+        this.payoutStub = config.payoutStub || null;
     }
     
     isUnlocked(playerState = null) {
