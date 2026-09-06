@@ -33,9 +33,9 @@ class GameManager {
     setupScene() {
         this.app.scene.ambientLight = new pc.Color(0.35, 0.4, 0.5);
         this.app.scene.fog.type = pc.FOG_LINEAR;
-        this.app.scene.fog.start = 60;
-        this.app.scene.fog.end = 250;
-        this.app.scene.fog.color = new pc.Color(0.55, 0.65, 0.75);
+        this.app.scene.fog.start = 50;
+        this.app.scene.fog.end = 200;
+        this.app.scene.fog.color = new pc.Color(0.58, 0.68, 0.78);
         this.app.scene.fog.density = 0.002;
         
         this.createSkyGradient();

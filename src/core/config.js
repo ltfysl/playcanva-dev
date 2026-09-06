@@ -58,9 +58,9 @@ const GameConfig = {
     
     buildingKinds: {
         home: {
-            color: new pc.Color(0.55, 0.45, 0.35),
-            accentColor: new pc.Color(0.7, 0.5, 0.3),
-            baseScale: { x: 12, y: 15, z: 12 },
+            color: new pc.Color(0.72, 0.58, 0.42),
+            accentColor: new pc.Color(0.52, 0.35, 0.22),
+            baseScale: { x: 14, y: 9, z: 11 },
             roofType: 'pitched',
             windowDensity: 0.4
         },
