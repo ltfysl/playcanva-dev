@@ -61,17 +61,47 @@ class Building {
     }
     
     createPitchedRoof(baseScale, color) {
-        const roof = new pc.Entity('roof');
-        roof.addComponent('render', {
-            type: 'cone',
+        const roofHeight = baseScale.y * 0.45;
+        const roofWidth = baseScale.x * 1.15;
+        const roofDepth = baseScale.z * 1.15;
+        
+        const roof1 = new pc.Entity('roof-slope-1');
+        roof1.addComponent('render', {
+            type: 'box',
             material: this.createMaterial(color)
         });
+        roof1.setLocalScale(roofWidth, 0.3, roofDepth / 2);
+        roof1.setLocalPosition(0, baseScale.y + roofHeight / 2, roofDepth / 4);
+        roof1.setLocalEulerAngles(25, 0, 0);
+        this.entity.addChild(roof1);
         
-        const roofHeight = baseScale.y * 0.55;
-        roof.setLocalScale(baseScale.x * 1.15, roofHeight, baseScale.z * 1.15);
-        roof.setLocalPosition(0, baseScale.y + roofHeight / 2, 0);
-        roof.setLocalEulerAngles(0, 45, 0);
-        this.entity.addChild(roof);
+        const roof2 = new pc.Entity('roof-slope-2');
+        roof2.addComponent('render', {
+            type: 'box',
+            material: this.createMaterial(color)
+        });
+        roof2.setLocalScale(roofWidth, 0.3, roofDepth / 2);
+        roof2.setLocalPosition(0, baseScale.y + roofHeight / 2, -roofDepth / 4);
+        roof2.setLocalEulerAngles(-25, 0, 0);
+        this.entity.addChild(roof2);
+        
+        const gableLeft = new pc.Entity('roof-gable-left');
+        gableLeft.addComponent('render', {
+            type: 'box',
+            material: this.createMaterial(color)
+        });
+        gableLeft.setLocalScale(0.2, roofHeight * 0.8, roofDepth);
+        gableLeft.setLocalPosition(roofWidth / 2, baseScale.y + roofHeight * 0.4, 0);
+        this.entity.addChild(gableLeft);
+        
+        const gableRight = new pc.Entity('roof-gable-right');
+        gableRight.addComponent('render', {
+            type: 'box',
+            material: this.createMaterial(color)
+        });
+        gableRight.setLocalScale(0.2, roofHeight * 0.8, roofDepth);
+        gableRight.setLocalPosition(-roofWidth / 2, baseScale.y + roofHeight * 0.4, 0);
+        this.entity.addChild(gableRight);
     }
     
     createFlatRoof(baseScale, color) {
