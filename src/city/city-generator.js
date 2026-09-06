@@ -211,7 +211,19 @@ class CityGenerator {
             { pos: new pc.Vec3(-85, 0, 55), scale: { x: 18, y: 32, z: 18 }, color: new pc.Color(0.4, 0.5, 0.65) },
             { pos: new pc.Vec3(60, 0, -100), scale: { x: 28, y: 44, z: 28 }, color: new pc.Color(0.45, 0.35, 0.55) },
             { pos: new pc.Vec3(-100, 0, -70), scale: { x: 22, y: 36, z: 22 }, color: new pc.Color(0.35, 0.45, 0.4) },
-            { pos: new pc.Vec3(80, 0, 85), scale: { x: 26, y: 46, z: 26 }, color: new pc.Color(0.5, 0.4, 0.45) }
+            { pos: new pc.Vec3(80, 0, 85), scale: { x: 26, y: 46, z: 26 }, color: new pc.Color(0.5, 0.4, 0.45) },
+            { pos: new pc.Vec3(-50, 0, -95), scale: { x: 20, y: 34, z: 20 }, color: GameConfig.colors.tech },
+            { pos: new pc.Vec3(100, 0, 50), scale: { x: 24, y: 40, z: 24 }, color: GameConfig.colors.startup },
+            { pos: new pc.Vec3(-95, 0, 90), scale: { x: 22, y: 38, z: 22 }, color: GameConfig.colors.creative },
+            { pos: new pc.Vec3(75, 0, -60), scale: { x: 26, y: 42, z: 26 }, color: GameConfig.colors.commercial },
+            { pos: new pc.Vec3(-70, 0, -50), scale: { x: 18, y: 30, z: 18 }, color: new pc.Color(0.55, 0.45, 0.6) },
+            { pos: new pc.Vec3(90, 0, -90), scale: { x: 20, y: 36, z: 20 }, color: GameConfig.colors.dev },
+            { pos: new pc.Vec3(-110, 0, 60), scale: { x: 28, y: 48, z: 28 }, color: GameConfig.colors.corporate },
+            { pos: new pc.Vec3(65, 0, 75), scale: { x: 22, y: 38, z: 22 }, color: new pc.Color(0.4, 0.6, 0.5) },
+            { pos: new pc.Vec3(-80, 0, -105), scale: { x: 24, y: 44, z: 24 }, color: GameConfig.colors.industrial },
+            { pos: new pc.Vec3(105, 0, -25), scale: { x: 20, y: 34, z: 20 }, color: new pc.Color(0.5, 0.35, 0.45) },
+            { pos: new pc.Vec3(-65, 0, 85), scale: { x: 26, y: 40, z: 26 }, color: GameConfig.colors.residential },
+            { pos: new pc.Vec3(85, 0, -105), scale: { x: 18, y: 32, z: 18 }, color: new pc.Color(0.45, 0.5, 0.55) }
         ];
         
         skylineBuildings.forEach((config, idx) => {

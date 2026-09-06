@@ -67,8 +67,8 @@ class Building {
             material: this.createMaterial(color)
         });
         
-        const roofHeight = baseScale.y * 0.3;
-        roof.setLocalScale(baseScale.x * 0.7, roofHeight, baseScale.z * 0.7);
+        const roofHeight = baseScale.y * 0.55;
+        roof.setLocalScale(baseScale.x * 1.15, roofHeight, baseScale.z * 1.15);
         roof.setLocalPosition(0, baseScale.y + roofHeight / 2, 0);
         roof.setLocalEulerAngles(0, 45, 0);
         this.entity.addChild(roof);
