@@ -140,8 +140,7 @@ class PlayerController {
         
         const pos = this.entity.getPosition();
         if (pos.y < GameConfig.player.height / 2) {
-            pos.y = GameConfig.player.height / 2;
-            this.entity.setPosition(pos);
+            this.entity.rigidbody.teleport(pos.x, GameConfig.player.height / 2, pos.z);
             const rigidbody = this.entity.rigidbody;
             const vel = rigidbody.linearVelocity;
             vel.y = 0;
@@ -150,7 +149,7 @@ class PlayerController {
     }
     
     setPosition(x, y, z) {
-        this.entity.setPosition(x, y + GameConfig.player.height / 2, z);
+        this.entity.rigidbody.teleport(x, y + GameConfig.player.height / 2, z);
     }
     
     getPosition() {

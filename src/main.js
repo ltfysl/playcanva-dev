@@ -1,40 +1,51 @@
-const canvas = document.getElementById('application-canvas');
+(async () => {
+    pc.WasmModule.setConfig('Ammo', {
+        glueUrl: 'https://code.playcanvas.com/ammo.wasm.js',
+        wasmUrl: 'https://code.playcanvas.com/ammo.wasm.wasm',
+        fallbackUrl: 'https://code.playcanvas.com/ammo.js'
+    });
 
-const app = new pc.Application(canvas, {
-    mouse: new pc.Mouse(canvas),
-    keyboard: new pc.Keyboard(window),
-    graphicsDeviceOptions: GameConfig.graphics
-});
+    await pc.WasmModule.getInstance('Ammo');
 
-app.setCanvasFillMode(pc.FILLMODE_FILL_WINDOW);
-app.setCanvasResolution(pc.RESOLUTION_AUTO);
+    const canvas = document.getElementById('application-canvas');
 
-window.addEventListener('resize', () => {
-    app.resizeCanvas();
-});
+    const app = new pc.Application(canvas, {
+        mouse: new pc.Mouse(canvas),
+        keyboard: new pc.Keyboard(window),
+        graphicsDeviceOptions: GameConfig.graphics
+    });
 
-app.scene.gammaCorrection = pc.GAMMA_SRGB;
-app.scene.toneMapping = pc.TONEMAP_ACES;
+    app.setCanvasFillMode(pc.FILLMODE_FILL_WINDOW);
+    app.setCanvasResolution(pc.RESOLUTION_AUTO);
 
-const gameManager = new GameManager(app);
+    window.addEventListener('resize', () => {
+        app.resizeCanvas();
+    });
 
-app.on('start', () => {
-    const loading = document.getElementById('loading');
-    if (loading) {
-        loading.style.display = 'none';
-    }
-    
-    console.log('Dev Tycoon - City Hub initialized');
-    console.log('Click to lock cursor, WASD to move, E to interact');
-});
+    app.scene.gammaCorrection = pc.GAMMA_SRGB;
+    app.scene.toneMapping = pc.TONEMAP_ACES;
 
-app.start();
+    const gameManager = new GameManager(app);
 
-gameManager.initialize();
+    app.on('start', () => {
+        const loading = document.getElementById('loading');
+        if (loading) {
+            loading.style.display = 'none';
+        }
+        
+        console.log('Dev Tycoon - City Hub initialized');
+        console.log('Ammo physics ready:', typeof Ammo !== 'undefined');
+        console.log('Click to lock cursor, WASD to move, E to interact');
+    });
 
-app.on('update', (dt) => {
-    gameManager.update(dt);
-});
+    app.start();
 
-window.app = app;
-window.gameManager = gameManager;
+    gameManager.initialize();
+
+    app.on('update', (dt) => {
+        gameManager.update(dt);
+    });
+
+    window.app = app;
+    window.gameManager = gameManager;
+})();

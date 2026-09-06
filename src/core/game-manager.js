@@ -26,10 +26,9 @@ class GameManager {
     
     setupScene() {
         this.app.scene.ambientLight = new pc.Color(0.3, 0.3, 0.4);
-        this.app.scene.fog = pc.FOG_LINEAR;
-        this.app.scene.fogColor = new pc.Color(0.6, 0.7, 0.8);
         this.app.scene.fogStart = 50;
         this.app.scene.fogEnd = 300;
+        this.app.scene.fogColor = new pc.Color(0.6, 0.7, 0.8);
     }
     
     createCamera() {

@@ -121,7 +121,10 @@ class LightingSystem {
             dayProgress
         );
         
-        ambientColor.scale(ambientIntensity);
+        ambientColor.r *= ambientIntensity;
+        ambientColor.g *= ambientIntensity;
+        ambientColor.b *= ambientIntensity;
+        
         this.app.scene.ambientLight = ambientColor;
     }
     
