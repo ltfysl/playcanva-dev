@@ -200,11 +200,18 @@ class CityGenerator {
     
     createSkylineProps() {
         const skylineBuildings = [
-            { pos: new pc.Vec3(-80, 0, 80), scale: { x: 25, y: 35, z: 25 }, color: new pc.Color(0.3, 0.35, 0.4) },
-            { pos: new pc.Vec3(-60, 0, -70), scale: { x: 20, y: 45, z: 20 }, color: new pc.Color(0.35, 0.4, 0.45) },
-            { pos: new pc.Vec3(70, 0, -80), scale: { x: 30, y: 40, z: 30 }, color: new pc.Color(0.32, 0.37, 0.42) },
-            { pos: new pc.Vec3(85, 0, 60), scale: { x: 22, y: 38, z: 22 }, color: new pc.Color(0.33, 0.38, 0.43) },
-            { pos: new pc.Vec3(-90, 0, -50), scale: { x: 28, y: 42, z: 28 }, color: new pc.Color(0.31, 0.36, 0.41) }
+            { pos: new pc.Vec3(-90, 0, 80), scale: { x: 28, y: 45, z: 28 }, color: GameConfig.colors.tech },
+            { pos: new pc.Vec3(-75, 0, -85), scale: { x: 22, y: 38, z: 22 }, color: GameConfig.colors.industrial },
+            { pos: new pc.Vec3(85, 0, -75), scale: { x: 32, y: 50, z: 32 }, color: GameConfig.colors.commercial },
+            { pos: new pc.Vec3(95, 0, 70), scale: { x: 25, y: 42, z: 25 }, color: GameConfig.colors.startup },
+            { pos: new pc.Vec3(-105, 0, -40), scale: { x: 30, y: 55, z: 30 }, color: GameConfig.colors.corporate },
+            { pos: new pc.Vec3(70, 0, 95), scale: { x: 20, y: 35, z: 20 }, color: GameConfig.colors.creative },
+            { pos: new pc.Vec3(-60, 0, 105), scale: { x: 26, y: 40, z: 26 }, color: GameConfig.colors.dev },
+            { pos: new pc.Vec3(110, 0, -45), scale: { x: 24, y: 48, z: 24 }, color: GameConfig.colors.residential },
+            { pos: new pc.Vec3(-85, 0, 55), scale: { x: 18, y: 32, z: 18 }, color: new pc.Color(0.4, 0.5, 0.65) },
+            { pos: new pc.Vec3(60, 0, -100), scale: { x: 28, y: 44, z: 28 }, color: new pc.Color(0.45, 0.35, 0.55) },
+            { pos: new pc.Vec3(-100, 0, -70), scale: { x: 22, y: 36, z: 22 }, color: new pc.Color(0.35, 0.45, 0.4) },
+            { pos: new pc.Vec3(80, 0, 85), scale: { x: 26, y: 46, z: 26 }, color: new pc.Color(0.5, 0.4, 0.45) }
         ];
         
         skylineBuildings.forEach((config, idx) => {
@@ -222,31 +229,6 @@ class CityGenerator {
             prop.setPosition(config.pos);
             this.app.root.addChild(prop);
         });
-        
-        const warmHomePos = new pc.Vec3(45, 0, 35);
-        const warmHome = new pc.Entity('warm-home-silhouette');
-        
-        const homeBody = new pc.Entity('body');
-        homeBody.addComponent('render', {
-            type: 'box',
-            material: this.createSkylineMaterial(new pc.Color(0.5, 0.42, 0.35))
-        });
-        homeBody.setLocalScale(14, 12, 14);
-        homeBody.setLocalPosition(0, 6, 0);
-        warmHome.addChild(homeBody);
-        
-        const roof = new pc.Entity('roof');
-        roof.addComponent('render', {
-            type: 'cone',
-            material: this.createSkylineMaterial(new pc.Color(0.6, 0.48, 0.35))
-        });
-        roof.setLocalScale(10, 5, 10);
-        roof.setLocalPosition(0, 12 + 2.5, 0);
-        roof.setLocalEulerAngles(0, 45, 0);
-        warmHome.addChild(roof);
-        
-        warmHome.setPosition(warmHomePos);
-        this.app.root.addChild(warmHome);
     }
     
     createSkylineMaterial(color) {

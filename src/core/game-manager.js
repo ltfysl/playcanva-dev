@@ -31,6 +31,29 @@ class GameManager {
         this.app.scene.fogEnd = 250;
         this.app.scene.fogColor = new pc.Color(0.55, 0.65, 0.75);
         this.app.scene.fogDensity = 0.002;
+        
+        this.createSkyGradient();
+    }
+    
+    createSkyGradient() {
+        const skybox = new pc.Entity('skybox');
+        skybox.addComponent('render', {
+            type: 'sphere',
+            material: this.createSkyMaterial()
+        });
+        skybox.setLocalScale(400, 400, 400);
+        skybox.setLocalPosition(0, 0, 0);
+        this.app.root.addChild(skybox);
+    }
+    
+    createSkyMaterial() {
+        const material = new pc.StandardMaterial();
+        material.diffuse = new pc.Color(0.45, 0.55, 0.7);
+        material.emissive = new pc.Color(0.3, 0.4, 0.55);
+        material.cull = pc.CULLFACE_FRONT;
+        material.useLighting = false;
+        material.update();
+        return material;
     }
     
     createCamera() {
