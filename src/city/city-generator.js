@@ -137,8 +137,6 @@ class CityGenerator {
             districtId
         );
         
-        cafe.setEnterable(true);
-        
         const cafeLocation = new LocationData(locationId, BuildingKind.CAFE, {
             name: 'The Bean Café',
             unlockState: UnlockState.AVAILABLE,
