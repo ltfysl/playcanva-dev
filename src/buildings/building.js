@@ -1,5 +1,5 @@
 class Building {
-    constructor(app, gameManager, id, name, position, kind, unlockState) {
+    constructor(app, gameManager, id, name, position, kind, unlockState, districtId) {
         this.app = app;
         this.gameManager = gameManager;
         this.id = id;
@@ -7,6 +7,7 @@ class Building {
         this.position = position;
         this.kind = kind;
         this.unlockState = unlockState;
+        this.districtId = districtId;
         this.entity = null;
         this.interior = null;
         this.doorPosition = null;

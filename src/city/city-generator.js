@@ -70,7 +70,8 @@ class CityGenerator {
             GameConfig.city.blockSize
         );
         
-        const locationId = new LocationId('downtown', 'starter-home');
+        const districtId = downtownDistrict.id;
+        const locationId = new LocationId(districtId, 'starter-home');
         
         const home = new Building(
             this.app,
@@ -79,7 +80,8 @@ class CityGenerator {
             'Your Apartment',
             homePosition,
             'home',
-            UnlockState.OWNED
+            UnlockState.OWNED,
+            districtId
         );
         
         home.setEnterable(true);
@@ -111,13 +113,17 @@ class CityGenerator {
     }
     
     createCafe() {
+        const downtownDistrict = this.districts.find(d => d.id === 'downtown');
+        if (!downtownDistrict) return;
+        
         const cafePosition = new pc.Vec3(
             -GameConfig.city.blockSize,
             0,
             GameConfig.city.blockSize * 1.5
         );
         
-        const locationId = new LocationId('downtown', 'the-bean-cafe');
+        const districtId = downtownDistrict.id;
+        const locationId = new LocationId(districtId, 'the-bean-cafe');
         
         const cafe = new Building(
             this.app,
@@ -126,7 +132,8 @@ class CityGenerator {
             'The Bean Café',
             cafePosition,
             'cafe',
-            UnlockState.AVAILABLE
+            UnlockState.AVAILABLE,
+            districtId
         );
         
         cafe.setEnterable(true);
@@ -148,13 +155,17 @@ class CityGenerator {
     }
     
     createCoworkSpace() {
+        const downtownDistrict = this.districts.find(d => d.id === 'downtown');
+        if (!downtownDistrict) return;
+        
         const coworkPosition = new pc.Vec3(
             GameConfig.city.blockSize * 2,
             0,
             -GameConfig.city.blockSize
         );
         
-        const locationId = new LocationId('downtown', 'hub-cowork');
+        const districtId = downtownDistrict.id;
+        const locationId = new LocationId(districtId, 'hub-cowork');
         
         const cowork = new Building(
             this.app,
@@ -163,7 +174,8 @@ class CityGenerator {
             'Hub Cowork',
             coworkPosition,
             'cowork',
-            UnlockState.LOCKED
+            UnlockState.LOCKED,
+            districtId
         );
         
         cowork.setEnterable(true);

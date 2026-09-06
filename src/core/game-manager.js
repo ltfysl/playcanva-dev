@@ -85,7 +85,7 @@ class GameManager {
         
         for (const building of this.buildings) {
             if (building.isNearby(playerPos, GameConfig.player.interactionDistance)) {
-                const locationId = new LocationId('downtown', building.id);
+                const locationId = new LocationId(building.districtId, building.id);
                 const location = this.cityModule.getLocation(locationId);
                 
                 if (location && location.canEnter()) {
@@ -104,7 +104,7 @@ class GameManager {
         this.updateLocationIndicator(building.name + ' (Interior)');
         
         if (this.cityModule) {
-            const locationId = new LocationId('downtown', building.id);
+            const locationId = new LocationId(building.districtId, building.id);
             this.cityModule.enterLocation(locationId);
         }
     }
@@ -115,7 +115,7 @@ class GameManager {
         console.log('Exiting building');
         
         if (this.cityModule) {
-            const locationId = new LocationId('downtown', this.currentBuilding.id);
+            const locationId = new LocationId(this.currentBuilding.districtId, this.currentBuilding.id);
             this.cityModule.exitLocation(locationId);
         }
         
