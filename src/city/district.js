@@ -19,8 +19,6 @@ class District {
         
         this.createGround();
         this.createStreets();
-        this.createBuildings();
-        this.createDistrictMarker();
         
         this.gameManager.registerDistrict(this);
     }
@@ -66,60 +64,6 @@ class District {
             streetZ.setLocalPosition(offset, 0.05, 0);
             this.entity.addChild(streetZ);
         }
-    }
-    
-    createBuildings() {
-        const districtSize = GameConfig.city.districtSize;
-        const blockSize = GameConfig.city.blockSize;
-        const streetWidth = GameConfig.city.streetWidth;
-        const buildingSize = blockSize - streetWidth - 1;
-        
-        const color = GameConfig.colors[this.type] || GameConfig.colors.commercial;
-        
-        for (let x = 0; x < districtSize; x++) {
-            for (let z = 0; z < districtSize; z++) {
-                const offsetX = (x - districtSize / 2 + 0.5) * blockSize;
-                const offsetZ = (z - districtSize / 2 + 0.5) * blockSize;
-                
-                const height = pc.math.random(
-                    GameConfig.city.buildingHeightMin,
-                    GameConfig.city.buildingHeightMax
-                );
-                
-                const building = new pc.Entity(`building-${x}-${z}`);
-                building.addComponent('render', {
-                    type: 'box',
-                    material: this.createMaterial(color)
-                });
-                
-                building.setLocalScale(buildingSize, height, buildingSize);
-                building.setLocalPosition(offsetX, height / 2, offsetZ);
-                
-                this.entity.addChild(building);
-                this.buildings.push({
-                    entity: building,
-                    position: new pc.Vec3(
-                        this.position.x + offsetX,
-                        height / 2,
-                        this.position.z + offsetZ
-                    ),
-                    size: buildingSize,
-                    height: height
-                });
-            }
-        }
-    }
-    
-    createDistrictMarker() {
-        const marker = new pc.Entity(`marker-${this.id}`);
-        marker.addComponent('render', {
-            type: 'cylinder',
-            material: this.createMaterial(GameConfig.colors[this.type], 0.5)
-        });
-        
-        marker.setLocalScale(10, 0.5, 10);
-        marker.setLocalPosition(0, 0.3, 0);
-        this.entity.addChild(marker);
     }
     
     createMaterial(color, opacity = 1.0) {

@@ -28,6 +28,15 @@ class CityGenerator {
             material: this.createGroundMaterial()
         });
         
+        ground.addComponent('collision', {
+            type: 'box',
+            halfExtents: new pc.Vec3(groundSize / 2, 0.5, groundSize / 2)
+        });
+        
+        ground.addComponent('rigidbody', {
+            type: 'static'
+        });
+        
         ground.setLocalScale(groundSize, 1, groundSize);
         ground.setLocalPosition(0, -0.5, 0);
         ground.setLocalEulerAngles(-90, 0, 0);
@@ -120,7 +129,7 @@ class CityGenerator {
             UnlockState.AVAILABLE
         );
         
-        cafe.setEnterable(false);
+        cafe.setEnterable(true);
         
         const cafeLocation = new LocationData(locationId, BuildingKind.CAFE, {
             name: 'The Bean Café',
@@ -157,7 +166,7 @@ class CityGenerator {
             UnlockState.LOCKED
         );
         
-        cowork.setEnterable(false);
+        cowork.setEnterable(true);
         
         const coworkLocation = new LocationData(locationId, BuildingKind.COWORK, {
             name: 'Hub Cowork',

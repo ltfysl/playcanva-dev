@@ -58,33 +58,35 @@ class Minimap {
             
             const screenPos = this.worldToScreen(building.position.x, building.position.z);
             
-            if (building.canEnter) {
-                const kindColors = {
-                    'home': [255, 180, 120],
-                    'cafe': [200, 140, 100],
-                    'cowork': [120, 180, 230],
-                    'office': [150, 170, 190],
-                    'campus': [180, 200, 220],
-                    'serverRoom': [120, 140, 160],
-                    'agency': [180, 150, 200]
-                };
-                
-                const color = kindColors[building.kind] || [180, 180, 180];
-                
-                this.ctx.shadowBlur = 6;
-                this.ctx.shadowColor = `rgba(${color[0]}, ${color[1]}, ${color[2]}, 0.6)`;
-                
-                this.ctx.fillStyle = `rgba(${color[0]}, ${color[1]}, ${color[2]}, 0.9)`;
-                this.ctx.beginPath();
-                this.ctx.arc(screenPos.x, screenPos.y, 3, 0, Math.PI * 2);
-                this.ctx.fill();
-                
-                this.ctx.shadowBlur = 0;
-                
-                this.ctx.strokeStyle = `rgba(${color[0] + 30}, ${color[1] + 30}, ${color[2] + 30}, 1.0)`;
-                this.ctx.lineWidth = 1.5;
-                this.ctx.stroke();
-            }
+            const kindColors = {
+                'home': [255, 180, 120],
+                'cafe': [200, 140, 100],
+                'cowork': [120, 180, 230],
+                'office': [150, 170, 190],
+                'campus': [180, 200, 220],
+                'serverRoom': [120, 140, 160],
+                'agency': [180, 150, 200]
+            };
+            
+            const color = kindColors[building.kind] || [180, 180, 180];
+            
+            const canEnter = building.unlockState === UnlockState.AVAILABLE || 
+                             building.unlockState === UnlockState.OWNED;
+            const alpha = canEnter ? 0.9 : 0.4;
+            
+            this.ctx.shadowBlur = 6;
+            this.ctx.shadowColor = `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${alpha * 0.6})`;
+            
+            this.ctx.fillStyle = `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${alpha})`;
+            this.ctx.beginPath();
+            this.ctx.arc(screenPos.x, screenPos.y, 3, 0, Math.PI * 2);
+            this.ctx.fill();
+            
+            this.ctx.shadowBlur = 0;
+            
+            this.ctx.strokeStyle = `rgba(${color[0] + 30}, ${color[1] + 30}, ${color[2] + 30}, ${alpha})`;
+            this.ctx.lineWidth = 1.5;
+            this.ctx.stroke();
         });
     }
     

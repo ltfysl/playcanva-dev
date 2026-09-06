@@ -79,38 +79,138 @@ class HomeInterior {
     }
     
     createFurniture() {
-        const furniture = [
-            { name: 'desk', pos: [-5, 0.5, -5], scale: [2.5, 1, 1.2], color: new pc.Color(0.42, 0.35, 0.25) },
-            { name: 'chair', pos: [-5, 0.4, -3.5], scale: [0.7, 0.9, 0.7], color: new pc.Color(0.25, 0.25, 0.35) },
-            { name: 'bed', pos: [5, 0.5, -5.5], scale: [2.5, 1, 3.5], color: new pc.Color(0.55, 0.45, 0.4) },
-            { name: 'bookshelf', pos: [-7, 1.2, 5], scale: [1.8, 2.4, 0.4], color: new pc.Color(0.35, 0.28, 0.18) },
-            { name: 'table', pos: [2, 0.6, 5.5], scale: [2, 1.2, 2], color: new pc.Color(0.48, 0.38, 0.28) },
-            { name: 'rug', pos: [0, 0.05, 0], scale: [10, 0.05, 10], color: new pc.Color(0.5, 0.35, 0.3) },
-            { name: 'plant', pos: [6, 0.6, 6], scale: [0.4, 1.2, 0.4], color: new pc.Color(0.2, 0.5, 0.25) }
+        this.createDesk();
+        this.createChair();
+        this.createBed();
+        this.createBookshelf();
+        this.createTable();
+        this.createRug();
+        this.createPlant();
+    }
+    
+    createDesk() {
+        const deskTop = new pc.Entity('desk-top');
+        deskTop.addComponent('render', {
+            type: 'box',
+            material: this.createFurnitureMaterial(new pc.Color(0.42, 0.35, 0.25))
+        });
+        deskTop.setLocalPosition(-5, 0.85, -5);
+        deskTop.setLocalScale(2.5, 0.1, 1.2);
+        this.entity.addChild(deskTop);
+        
+        const legPositions = [
+            [-5.9, 0.4, -5.4],
+            [-4.1, 0.4, -5.4],
+            [-5.9, 0.4, -4.6],
+            [-4.1, 0.4, -4.6]
         ];
         
-        furniture.forEach(item => {
-            const obj = new pc.Entity(item.name);
-            obj.addComponent('render', {
+        legPositions.forEach((pos, i) => {
+            const leg = new pc.Entity(`desk-leg-${i}`);
+            leg.addComponent('render', {
                 type: 'box',
-                material: this.createFurnitureMaterial(item.color)
+                material: this.createFurnitureMaterial(new pc.Color(0.38, 0.31, 0.22))
             });
-            obj.setLocalPosition(...item.pos);
-            obj.setLocalScale(...item.scale);
-            this.entity.addChild(obj);
-            
-            if (item.name === 'desk' || item.name === 'bed' || item.name === 'table') {
-                const shadow = new pc.Entity(`${item.name}-shadow`);
-                shadow.addComponent('render', {
-                    type: 'cylinder',
-                    material: this.createShadowMaterial()
-                });
-                shadow.setLocalScale(item.scale[0] * 1.2, 0.02, item.scale[2] * 1.2);
-                shadow.setLocalPosition(item.pos[0], 0.06, item.pos[2]);
-                shadow.setLocalEulerAngles(-90, 0, 0);
-                this.entity.addChild(shadow);
-            }
+            leg.setLocalPosition(...pos);
+            leg.setLocalScale(0.12, 0.8, 0.12);
+            this.entity.addChild(leg);
         });
+        
+        const shadow = new pc.Entity('desk-shadow');
+        shadow.addComponent('render', {
+            type: 'cylinder',
+            material: this.createShadowMaterial()
+        });
+        shadow.setLocalScale(3, 0.02, 1.5);
+        shadow.setLocalPosition(-5, 0.06, -5);
+        shadow.setLocalEulerAngles(-90, 0, 0);
+        this.entity.addChild(shadow);
+    }
+    
+    createChair() {
+        const chair = new pc.Entity('chair');
+        chair.addComponent('render', {
+            type: 'box',
+            material: this.createFurnitureMaterial(new pc.Color(0.25, 0.25, 0.35))
+        });
+        chair.setLocalPosition(-5, 0.4, -3.5);
+        chair.setLocalScale(0.7, 0.9, 0.7);
+        this.entity.addChild(chair);
+    }
+    
+    createBed() {
+        const bed = new pc.Entity('bed');
+        bed.addComponent('render', {
+            type: 'box',
+            material: this.createFurnitureMaterial(new pc.Color(0.55, 0.45, 0.4))
+        });
+        bed.setLocalPosition(5, 0.5, -5.5);
+        bed.setLocalScale(2.5, 1, 3.5);
+        this.entity.addChild(bed);
+        
+        const shadow = new pc.Entity('bed-shadow');
+        shadow.addComponent('render', {
+            type: 'cylinder',
+            material: this.createShadowMaterial()
+        });
+        shadow.setLocalScale(3, 0.02, 4.2);
+        shadow.setLocalPosition(5, 0.06, -5.5);
+        shadow.setLocalEulerAngles(-90, 0, 0);
+        this.entity.addChild(shadow);
+    }
+    
+    createBookshelf() {
+        const bookshelf = new pc.Entity('bookshelf');
+        bookshelf.addComponent('render', {
+            type: 'box',
+            material: this.createFurnitureMaterial(new pc.Color(0.35, 0.28, 0.18))
+        });
+        bookshelf.setLocalPosition(-7, 1.2, 5);
+        bookshelf.setLocalScale(1.8, 2.4, 0.4);
+        this.entity.addChild(bookshelf);
+    }
+    
+    createTable() {
+        const table = new pc.Entity('table');
+        table.addComponent('render', {
+            type: 'box',
+            material: this.createFurnitureMaterial(new pc.Color(0.48, 0.38, 0.28))
+        });
+        table.setLocalPosition(2, 0.6, 5.5);
+        table.setLocalScale(2, 1.2, 2);
+        this.entity.addChild(table);
+        
+        const shadow = new pc.Entity('table-shadow');
+        shadow.addComponent('render', {
+            type: 'cylinder',
+            material: this.createShadowMaterial()
+        });
+        shadow.setLocalScale(2.4, 0.02, 2.4);
+        shadow.setLocalPosition(2, 0.06, 5.5);
+        shadow.setLocalEulerAngles(-90, 0, 0);
+        this.entity.addChild(shadow);
+    }
+    
+    createRug() {
+        const rug = new pc.Entity('rug');
+        rug.addComponent('render', {
+            type: 'box',
+            material: this.createFurnitureMaterial(new pc.Color(0.5, 0.35, 0.3))
+        });
+        rug.setLocalPosition(0, 0.05, 0);
+        rug.setLocalScale(10, 0.05, 10);
+        this.entity.addChild(rug);
+    }
+    
+    createPlant() {
+        const plant = new pc.Entity('plant');
+        plant.addComponent('render', {
+            type: 'box',
+            material: this.createFurnitureMaterial(new pc.Color(0.2, 0.5, 0.25))
+        });
+        plant.setLocalPosition(6, 0.6, 6);
+        plant.setLocalScale(0.4, 1.2, 0.4);
+        this.entity.addChild(plant);
     }
     
     createFocalWall() {

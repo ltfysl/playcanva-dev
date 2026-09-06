@@ -84,9 +84,14 @@ class GameManager {
         const playerPos = this.player.getPosition();
         
         for (const building of this.buildings) {
-            if (building.canEnter && building.isNearby(playerPos, GameConfig.player.interactionDistance)) {
-                this.enterBuilding(building);
-                return;
+            if (building.isNearby(playerPos, GameConfig.player.interactionDistance)) {
+                const locationId = new LocationId('downtown', building.id);
+                const location = this.cityModule.getLocation(locationId);
+                
+                if (location && location.canEnter()) {
+                    this.enterBuilding(building);
+                    return;
+                }
             }
         }
     }
