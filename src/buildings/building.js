@@ -31,7 +31,7 @@ class Building {
         });
         mainBody.addComponent('collision', {
             type: 'box',
-            halfExtents: new pc.Vec3(baseScale.x / 2, baseScale.y / 2, baseScale.z / 2)
+            halfExtents: new pc.Vec3(0.5, 0.5, 0.5)
         });
         mainBody.addComponent('rigidbody', {
             type: 'static'
@@ -181,6 +181,8 @@ class Building {
     }
     
     createDoor() {
+        const baseScale = this.kindConfig.baseScale;
+        
         const door = new pc.Entity('door');
         door.addComponent('render', {
             type: 'box',
@@ -188,10 +190,10 @@ class Building {
         });
         
         door.setLocalScale(2.5, 3.5, 0.2);
-        door.setPosition(
-            this.doorPosition.x,
+        door.setLocalPosition(
+            0,
             1.75,
-            this.doorPosition.z - 0.5
+            baseScale.z / 2 + 1
         );
         this.entity.addChild(door);
         
@@ -201,15 +203,17 @@ class Building {
             material: this.createMaterial(this.kindConfig.accentColor)
         });
         doorFrame.setLocalScale(3, 4, 0.3);
-        doorFrame.setPosition(
-            this.doorPosition.x,
+        doorFrame.setLocalPosition(
+            0,
             2,
-            this.doorPosition.z - 0.6
+            baseScale.z / 2 + 0.9
         );
         this.entity.addChild(doorFrame);
     }
     
     createPorch() {
+        const baseScale = this.kindConfig.baseScale;
+        
         const porch = new pc.Entity('porch');
         porch.addComponent('render', {
             type: 'box',
@@ -217,10 +221,10 @@ class Building {
         });
         
         porch.setLocalScale(4, 0.3, 2);
-        porch.setPosition(
-            this.doorPosition.x,
+        porch.setLocalPosition(
+            0,
             0.15,
-            this.doorPosition.z
+            baseScale.z / 2 + 1.5
         );
         this.entity.addChild(porch);
     }
@@ -265,10 +269,10 @@ class Building {
         
         this.entity.enabled = true;
         
-        player.setPosition(
-            this.doorPosition.x,
-            0,
-            this.doorPosition.z + 2
-        );
+        const exitX = this.doorPosition.x;
+        const exitY = GameConfig.player.height / 2;
+        const exitZ = this.doorPosition.z + 2;
+        
+        player.entity.rigidbody.teleport(exitX, exitY, exitZ);
     }
 }

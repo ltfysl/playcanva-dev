@@ -342,7 +342,8 @@ class HomeInterior {
     }
     
     teleportPlayer(player) {
-        player.setPosition(500, 0, 500);
+        const interiorY = GameConfig.player.height / 2;
+        player.entity.rigidbody.teleport(500, interiorY, 500);
         player.rotation.set(0, 0);
     }
 }
