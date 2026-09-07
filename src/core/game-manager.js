@@ -11,6 +11,7 @@ class GameManager {
         this.districts = [];
         this.buildings = [];
         this.freelanceSystem = null;
+        this.learnRunner = null;
         this.solHUD = null;
         this.skillsStub = new SkillsStub();
     }
@@ -97,6 +98,7 @@ class GameManager {
         this.minimap = new Minimap(this);
         this.solHUD = new SolHUD();
         this.setupFreelanceListeners();
+        this.setupLearnListeners();
     }
     
     setupFreelanceListeners() {
@@ -151,6 +153,46 @@ class GameManager {
         checkFreelanceSystem();
     }
     
+    setupLearnListeners() {
+        const checkLearnRunner = () => {
+            if (this.learnRunner) {
+                runnerRegistry.register('learn', this.learnRunner);
+                
+                this.learnRunner.on('jobOffered', (data) => {
+                    const xp = data.slot.xpStub.amount;
+                    this.solHUD.showLearnOffer(data.slot.name, xp);
+                });
+                
+                this.learnRunner.on('jobAccepted', (data) => {
+                    this.learnRunner.startJob();
+                });
+                
+                this.learnRunner.on('jobStarted', (data) => {
+                    this.solHUD.showLearnInProgress();
+                });
+                
+                this.learnRunner.on('jobPaid', (data) => {
+                    this.solHUD.showLearnPayout(data.xp);
+                    console.log('Learn XP awarded:', data.xp);
+                    
+                    setTimeout(() => {
+                        this.learnRunner.checkAndOfferJob();
+                    }, 1600);
+                });
+                
+                this.cityModule.getPresence().on('exit', (data) => {
+                    if (data.location.toString() === this.learnRunner.homeLocationId.toString()) {
+                        this.solHUD.hide();
+                    }
+                });
+            } else {
+                setTimeout(checkLearnRunner, 100);
+            }
+        };
+        
+        checkLearnRunner();
+    }
+    
     updateSolHUDForLocation() {
         if (!this.freelanceSystem || !this.solHUD) return;
         
@@ -188,35 +230,48 @@ class GameManager {
     
     handleInteraction() {
         if (this.isInBuilding) {
-            if (this.tryFreelanceInteraction()) {
+            if (this.tryRunnerInteraction()) {
                 return;
             }
             this.exitBuilding();
         } else {
-            if (this.tryFreelanceInteraction()) {
+            if (this.tryRunnerInteraction()) {
                 return;
             }
             this.tryEnterBuilding();
         }
     }
     
-    tryFreelanceInteraction() {
-        if (!this.freelanceSystem || !this.solHUD) return false;
+    tryRunnerInteraction() {
+        if (!this.solHUD) return false;
         
-        const currentRun = this.freelanceSystem.getCurrentRun();
-        if (!currentRun) return false;
+        const currentLocation = this.cityModule.getCurrentLocation();
+        if (!currentLocation) return false;
         
-        const hudState = this.solHUD.getCurrentState();
+        const slots = currentLocation.getActivitySlots();
+        if (slots.length === 0) return false;
         
-        if (hudState === 'offered' && currentRun.state === 'offered') {
-            this.freelanceSystem.acceptJob();
-            return true;
-        }
-        
-        if (hudState === 'inProgress' && currentRun.state === 'inProgress') {
-            this.freelanceSystem.completeJob();
-            this.freelanceSystem.payoutJob();
-            return true;
+        for (const slot of slots) {
+            if (!slot.kind) continue;
+            
+            const runner = runnerRegistry.get(slot.kind);
+            if (!runner) continue;
+            
+            const currentRun = runner.getCurrentRun();
+            if (!currentRun) continue;
+            
+            const hudState = this.solHUD.getCurrentState();
+            
+            if (hudState === 'offered' && currentRun.state === 'offered') {
+                runner.acceptJob();
+                return true;
+            }
+            
+            if (hudState === 'inProgress' && currentRun.state === 'inProgress') {
+                runner.completeJob();
+                runner.payoutJob();
+                return true;
+            }
         }
         
         return false;
@@ -290,6 +345,10 @@ class GameManager {
         
         if (this.freelanceSystem) {
             this.freelanceSystem.update(dt);
+        }
+        
+        if (this.learnRunner) {
+            this.learnRunner.update(dt);
         }
         
         this.checkDistrictTransition();

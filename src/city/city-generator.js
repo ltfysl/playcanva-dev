@@ -95,6 +95,15 @@ class CityGenerator {
             unlockState: UnlockState.OWNED,
             position: homePosition,
             activitySlots: [
+                new ActivitySlot('home-practice-1', {
+                    name: 'Practice coding',
+                    skillTags: ['coding'],
+                    unlockRule: null,
+                    durationHint: 20,
+                    kind: 'learn',
+                    payoutStub: null,
+                    xpStub: { amount: 5 }
+                }),
                 new ActivitySlot('work-desk', {
                     name: 'Work at Desk',
                     skillTags: [],
@@ -109,6 +118,13 @@ class CityGenerator {
         });
         
         this.cityModule.registerLocation(homeLocation);
+        
+        this.learnRunner = new LearnRunner(
+            this.cityModule,
+            locationId,
+            this.gameManager.skillsStub
+        );
+        this.gameManager.learnRunner = this.learnRunner;
         
         console.log('Starter home created at', homePosition);
     }
