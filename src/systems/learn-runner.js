@@ -1,4 +1,4 @@
-const JobState = {
+const LearnJobState = {
     IDLE: 'idle',
     OFFERED: 'offered',
     ACCEPTED: 'accepted',
@@ -7,15 +7,15 @@ const JobState = {
     PAID: 'paid'
 };
 
-class JobRun {
+class LearnJobRun {
     constructor(slotId) {
         this.slotId = slotId;
-        this.state = JobState.IDLE;
+        this.state = LearnJobState.IDLE;
         this.startTime = null;
     }
     
     getProgress(durationHint) {
-        if (this.state !== JobState.IN_PROGRESS || !this.startTime) {
+        if (this.state !== LearnJobState.IN_PROGRESS || !this.startTime) {
             return 0;
         }
         const elapsed = Date.now() - this.startTime;
@@ -78,10 +78,10 @@ class LearnRunner {
         
         presence.on('exit', (data) => {
             if (data.location.toString() === this.homeLocationId.toString()) {
-                if (this.currentRun && this.currentRun.state === JobState.OFFERED) {
-                    this.currentRun.state = JobState.IDLE;
+                if (this.currentRun && this.currentRun.state === LearnJobState.OFFERED) {
+                    this.currentRun.state = LearnJobState.IDLE;
                 }
-                if (this.currentRun && this.currentRun.state === JobState.IN_PROGRESS) {
+                if (this.currentRun && this.currentRun.state === LearnJobState.IN_PROGRESS) {
                     this.completeJob();
                     this.payoutJob();
                 }
@@ -92,31 +92,31 @@ class LearnRunner {
     checkAndOfferJob() {
         const presence = this.cityModule.getPresence();
         const isAtLocation = presence.isAt(this.homeLocationId);
-        const isIdle = !this.currentRun || this.currentRun.state === JobState.IDLE || this.currentRun.state === JobState.PAID;
+        const isIdle = !this.currentRun || this.currentRun.state === LearnJobState.IDLE || this.currentRun.state === LearnJobState.PAID;
         
         if (!isIdle || !isAtLocation) return;
         
         const slot = this.getNextOfferable();
         if (slot) {
-            this.currentRun = new JobRun(slot.id);
-            this.currentRun.state = JobState.OFFERED;
+            this.currentRun = new LearnJobRun(slot.id);
+            this.currentRun.state = LearnJobState.OFFERED;
             this.notifyListeners('jobOffered', { slotId: slot.id, slot });
         }
     }
     
     acceptJob() {
-        if (!this.currentRun || this.currentRun.state !== JobState.OFFERED) return false;
+        if (!this.currentRun || this.currentRun.state !== LearnJobState.OFFERED) return false;
         
-        this.currentRun.state = JobState.ACCEPTED;
+        this.currentRun.state = LearnJobState.ACCEPTED;
         const slot = this.getSlot(this.currentRun.slotId);
         this.notifyListeners('jobAccepted', { slotId: this.currentRun.slotId, slot });
         return true;
     }
     
     startJob() {
-        if (!this.currentRun || this.currentRun.state !== JobState.ACCEPTED) return false;
+        if (!this.currentRun || this.currentRun.state !== LearnJobState.ACCEPTED) return false;
         
-        this.currentRun.state = JobState.IN_PROGRESS;
+        this.currentRun.state = LearnJobState.IN_PROGRESS;
         this.currentRun.startTime = Date.now();
         const slot = this.getSlot(this.currentRun.slotId);
         this.notifyListeners('jobStarted', { slotId: this.currentRun.slotId, slot });
@@ -124,21 +124,21 @@ class LearnRunner {
     }
     
     completeJob() {
-        if (!this.currentRun || this.currentRun.state !== JobState.IN_PROGRESS) return false;
+        if (!this.currentRun || this.currentRun.state !== LearnJobState.IN_PROGRESS) return false;
         
-        this.currentRun.state = JobState.COMPLETED;
+        this.currentRun.state = LearnJobState.COMPLETED;
         const slot = this.getSlot(this.currentRun.slotId);
         this.notifyListeners('jobCompleted', { slotId: this.currentRun.slotId, slot });
         return true;
     }
     
     payoutJob() {
-        if (!this.currentRun || this.currentRun.state !== JobState.COMPLETED) return null;
+        if (!this.currentRun || this.currentRun.state !== LearnJobState.COMPLETED) return null;
         
         const slot = this.getSlot(this.currentRun.slotId);
         if (!slot) return null;
         
-        this.currentRun.state = JobState.PAID;
+        this.currentRun.state = LearnJobState.PAID;
         
         const xpStub = slot.xpStub;
         const skillTag = slot.skillTags && slot.skillTags.length > 0 ? slot.skillTags[0] : null;
@@ -156,7 +156,7 @@ class LearnRunner {
             xp
         });
         
-        this.currentRun.state = JobState.IDLE;
+        this.currentRun.state = LearnJobState.IDLE;
         
         return { payout: null, xp };
     }
@@ -192,7 +192,7 @@ class LearnRunner {
     }
     
     update(dt) {
-        if (this.currentRun && this.currentRun.state === JobState.IN_PROGRESS) {
+        if (this.currentRun && this.currentRun.state === LearnJobState.IN_PROGRESS) {
             const slot = this.getSlot(this.currentRun.slotId);
             if (!slot) return;
             
