@@ -153,6 +153,7 @@ class LocationData {
         this.buildingKind = buildingKind;
         this.name = config.name || buildingKind;
         this.unlockState = config.unlockState || UnlockState.LOCKED;
+        this.unlockRule = config.unlockRule || null;
         this.activitySlots = config.activitySlots || [];
         this.reputationSurface = config.reputationSurface || null;
         this.position = config.position || { x: 0, y: 0, z: 0 };

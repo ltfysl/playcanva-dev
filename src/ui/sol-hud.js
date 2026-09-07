@@ -76,8 +76,12 @@ class SolHUD {
         this.show(`E — ${jobName} (+${xpAmount} coding XP)`, 'offered');
     }
     
-    showLearnInProgress() {
-        this.show('Practicing…', 'inProgress');
+    showLearnInProgress(label = 'Practicing…') {
+        this.show(label, 'inProgress');
+    }
+    
+    showLearnInProgressFocusing() {
+        this.show('Focusing…', 'inProgress');
     }
     
     showLearnPayout(xp) {
