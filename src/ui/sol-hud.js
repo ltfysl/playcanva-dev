@@ -55,6 +55,10 @@ class SolHUD {
         this.show('Fixing…', 'inProgress');
     }
     
+    showCareerInProgress() {
+        this.show('Working…', 'inProgress');
+    }
+    
     showPayout(amount, xp = null) {
         let text = `+$${amount}`;
         if (xp && xp.amount && xp.skill) {
