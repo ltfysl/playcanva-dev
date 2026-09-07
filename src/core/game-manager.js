@@ -12,6 +12,7 @@ class GameManager {
         this.buildings = [];
         this.freelanceSystem = null;
         this.learnRunner = null;
+        this.careerRunner = null;
         this.solHUD = null;
         this.skillsStub = new SkillsStub();
     }
@@ -99,6 +100,7 @@ class GameManager {
         this.solHUD = new SolHUD();
         this.setupFreelanceListeners();
         this.setupLearnListeners();
+        this.setupCareerListeners();
     }
     
     setupFreelanceListeners() {
@@ -409,6 +411,10 @@ class GameManager {
         
         if (this.learnRunner) {
             this.learnRunner.update(dt);
+        }
+        
+        if (this.careerRunner) {
+            this.careerRunner.update(dt);
         }
         
         this.checkDistrictTransition();
