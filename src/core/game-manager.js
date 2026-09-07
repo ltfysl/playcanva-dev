@@ -12,6 +12,7 @@ class GameManager {
         this.buildings = [];
         this.freelanceSystem = null;
         this.solHUD = null;
+        this.skillsStub = new SkillsStub();
     }
     
     initialize() {
@@ -102,8 +103,8 @@ class GameManager {
         const checkFreelanceSystem = () => {
             if (this.freelanceSystem) {
                 this.freelanceSystem.on('jobOffered', (data) => {
-                    const payout = data.job.payoutStub.amount;
-                    this.solHUD.showJobOffer(data.job.name, payout);
+                    const payout = data.slot.payoutStub.amount;
+                    this.solHUD.showJobOffer(data.slot.name, payout);
                 });
                 
                 this.freelanceSystem.on('jobAccepted', (data) => {
@@ -115,8 +116,8 @@ class GameManager {
                 });
                 
                 this.freelanceSystem.on('jobPaid', (data) => {
-                    this.solHUD.showPayout(data.payout.amount);
-                    console.log('Job paid:', data.payout.amount, 'New balance:', data.newBalance);
+                    this.solHUD.showPayout(data.payout.amount, data.xp);
+                    console.log('Job paid:', data.payout.amount, 'XP awarded:', data.xp, 'New balance:', data.newBalance);
                 });
             } else {
                 setTimeout(checkFreelanceSystem, 100);
@@ -151,17 +152,17 @@ class GameManager {
     tryFreelanceInteraction() {
         if (!this.freelanceSystem || !this.solHUD) return false;
         
-        const currentJob = this.freelanceSystem.getCurrentJob();
-        if (!currentJob) return false;
+        const currentRun = this.freelanceSystem.getCurrentRun();
+        if (!currentRun) return false;
         
         const hudState = this.solHUD.getCurrentState();
         
-        if (hudState === 'offered' && currentJob.state === 'offered') {
+        if (hudState === 'offered' && currentRun.state === 'offered') {
             this.freelanceSystem.acceptJob();
             return true;
         }
         
-        if (hudState === 'inProgress' && currentJob.state === 'inProgress') {
+        if (hudState === 'inProgress' && currentRun.state === 'inProgress') {
             this.freelanceSystem.completeJob();
             this.freelanceSystem.payoutJob();
             return true;

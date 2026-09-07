@@ -7,89 +7,29 @@ const JobState = {
     PAID: 'paid'
 };
 
-class FreelanceJob {
-    constructor(config) {
-        this.id = config.id;
-        this.name = config.name;
-        this.skillTags = config.skillTags || [];
-        this.unlockRule = config.unlockRule || null;
-        this.durationHint = config.durationHint || 30;
-        this.kind = config.kind || 'freelance';
-        this.payoutStub = config.payoutStub || { currency: 'cash', amount: 0 };
+class JobRun {
+    constructor(slotId) {
+        this.slotId = slotId;
         this.state = JobState.IDLE;
         this.startTime = null;
     }
     
-    isUnlocked() {
-        return this.unlockRule === null;
-    }
-    
-    canOffer(presence, locationId) {
-        return this.state === JobState.IDLE && 
-               this.isUnlocked() && 
-               presence.isAt(locationId);
-    }
-    
-    offer() {
-        if (this.state === JobState.IDLE) {
-            this.state = JobState.OFFERED;
-            return true;
-        }
-        return false;
-    }
-    
-    accept() {
-        if (this.state === JobState.OFFERED) {
-            this.state = JobState.ACCEPTED;
-            return true;
-        }
-        return false;
-    }
-    
-    start() {
-        if (this.state === JobState.ACCEPTED) {
-            this.state = JobState.IN_PROGRESS;
-            this.startTime = Date.now();
-            return true;
-        }
-        return false;
-    }
-    
-    complete() {
-        if (this.state === JobState.IN_PROGRESS) {
-            this.state = JobState.COMPLETED;
-            return true;
-        }
-        return false;
-    }
-    
-    payout() {
-        if (this.state === JobState.COMPLETED) {
-            this.state = JobState.PAID;
-            return this.payoutStub;
-        }
-        return null;
-    }
-    
-    getState() {
-        return this.state;
-    }
-    
-    getProgress() {
+    getProgress(durationHint) {
         if (this.state !== JobState.IN_PROGRESS || !this.startTime) {
             return 0;
         }
         const elapsed = Date.now() - this.startTime;
-        const durationMs = this.durationHint * 1000;
+        const durationMs = durationHint * 1000;
         return Math.min(1, elapsed / durationMs);
     }
 }
 
 class FreelanceSystem {
-    constructor(cityModule, cafeLocationId) {
+    constructor(cityModule, cafeLocationId, skillsStub) {
         this.cityModule = cityModule;
         this.cafeLocationId = cafeLocationId;
-        this.currentJob = null;
+        this.skillsStub = skillsStub;
+        this.currentRun = null;
         this.cashBalance = 0;
         this.listeners = {
             jobOffered: [],
@@ -99,33 +39,23 @@ class FreelanceSystem {
             jobPaid: []
         };
         
-        this.initializeCafeJob();
         this.setupPresenceListeners();
     }
     
-    initializeCafeJob() {
+    getSlot(slotId) {
         const cafeLocation = this.cityModule.getLocation(this.cafeLocationId);
-        if (!cafeLocation) {
-            console.warn('Cafe location not found');
-            return;
-        }
+        if (!cafeLocation) return null;
         
-        const activitySlots = cafeLocation.getActivitySlots();
-        if (activitySlots.length === 0) {
-            console.warn('No activity slots found in cafe');
-            return;
-        }
+        const slots = cafeLocation.getActivitySlots();
+        return slots.find(s => s.id === slotId);
+    }
+    
+    getCafeSlotId() {
+        const cafeLocation = this.cityModule.getLocation(this.cafeLocationId);
+        if (!cafeLocation) return null;
         
-        const slot = activitySlots[0];
-        this.currentJob = new FreelanceJob({
-            id: slot.id,
-            name: slot.name,
-            skillTags: slot.skillTags || [],
-            unlockRule: slot.unlockRule || null,
-            durationHint: slot.durationHint || 30,
-            kind: slot.kind || 'freelance',
-            payoutStub: slot.payoutStub || { currency: 'cash', amount: 0 }
-        });
+        const slots = cafeLocation.getActivitySlots();
+        return slots.length > 0 ? slots[0].id : null;
     }
     
     setupPresenceListeners() {
@@ -139,71 +69,100 @@ class FreelanceSystem {
         
         presence.on('exit', (data) => {
             if (data.location.toString() === this.cafeLocationId.toString()) {
-                if (this.currentJob && this.currentJob.state === JobState.OFFERED) {
-                    this.currentJob.state = JobState.IDLE;
+                if (this.currentRun && this.currentRun.state === JobState.OFFERED) {
+                    this.currentRun.state = JobState.IDLE;
                 }
             }
         });
     }
     
     checkAndOfferJob() {
-        if (!this.currentJob) return;
+        const slotId = this.getCafeSlotId();
+        if (!slotId) return;
+        
+        const slot = this.getSlot(slotId);
+        if (!slot) return;
         
         const presence = this.cityModule.getPresence();
-        if (this.currentJob.canOffer(presence, this.cafeLocationId)) {
-            this.currentJob.offer();
-            this.notifyListeners('jobOffered', { job: this.currentJob });
+        const isUnlocked = slot.unlockRule === null;
+        const isAtLocation = presence.isAt(this.cafeLocationId);
+        const isIdle = !this.currentRun || this.currentRun.state === JobState.IDLE;
+        
+        if (isIdle && isUnlocked && isAtLocation) {
+            this.currentRun = new JobRun(slotId);
+            this.currentRun.state = JobState.OFFERED;
+            this.notifyListeners('jobOffered', { slotId, slot });
         }
     }
     
     acceptJob() {
-        if (!this.currentJob) return false;
+        if (!this.currentRun || this.currentRun.state !== JobState.OFFERED) return false;
         
-        if (this.currentJob.accept()) {
-            this.notifyListeners('jobAccepted', { job: this.currentJob });
-            return true;
-        }
-        return false;
+        this.currentRun.state = JobState.ACCEPTED;
+        const slot = this.getSlot(this.currentRun.slotId);
+        this.notifyListeners('jobAccepted', { slotId: this.currentRun.slotId, slot });
+        return true;
     }
     
     startJob() {
-        if (!this.currentJob) return false;
+        if (!this.currentRun || this.currentRun.state !== JobState.ACCEPTED) return false;
         
-        if (this.currentJob.start()) {
-            this.notifyListeners('jobStarted', { job: this.currentJob });
-            return true;
-        }
-        return false;
+        this.currentRun.state = JobState.IN_PROGRESS;
+        this.currentRun.startTime = Date.now();
+        const slot = this.getSlot(this.currentRun.slotId);
+        this.notifyListeners('jobStarted', { slotId: this.currentRun.slotId, slot });
+        return true;
     }
     
     completeJob() {
-        if (!this.currentJob) return false;
+        if (!this.currentRun || this.currentRun.state !== JobState.IN_PROGRESS) return false;
         
-        if (this.currentJob.complete()) {
-            this.notifyListeners('jobCompleted', { job: this.currentJob });
-            return true;
-        }
-        return false;
+        this.currentRun.state = JobState.COMPLETED;
+        const slot = this.getSlot(this.currentRun.slotId);
+        this.notifyListeners('jobCompleted', { slotId: this.currentRun.slotId, slot });
+        return true;
     }
     
     payoutJob() {
-        if (!this.currentJob) return null;
+        if (!this.currentRun || this.currentRun.state !== JobState.COMPLETED) return null;
         
-        const payout = this.currentJob.payout();
+        const slot = this.getSlot(this.currentRun.slotId);
+        if (!slot) return null;
+        
+        this.currentRun.state = JobState.PAID;
+        
+        const payout = slot.payoutStub;
         if (payout) {
             this.cashBalance += payout.amount;
-            this.notifyListeners('jobPaid', { 
-                job: this.currentJob, 
-                payout: payout,
-                newBalance: this.cashBalance 
-            });
-            return payout;
         }
-        return null;
+        
+        const xpStub = slot.xpStub;
+        const skillTag = slot.skillTags && slot.skillTags.length > 0 ? slot.skillTags[0] : null;
+        
+        let xp = null;
+        if (xpStub && xpStub.amount && skillTag && this.skillsStub) {
+            this.skillsStub.addXp(skillTag, xpStub.amount);
+            xp = { skill: skillTag, amount: xpStub.amount };
+        }
+        
+        this.notifyListeners('jobPaid', { 
+            slotId: this.currentRun.slotId,
+            slot,
+            payout,
+            xp,
+            newBalance: this.cashBalance 
+        });
+        
+        return { payout, xp };
     }
     
-    getCurrentJob() {
-        return this.currentJob;
+    getCurrentRun() {
+        return this.currentRun;
+    }
+    
+    getCurrentSlot() {
+        if (!this.currentRun) return null;
+        return this.getSlot(this.currentRun.slotId);
     }
     
     getCashBalance() {
@@ -232,8 +191,11 @@ class FreelanceSystem {
     }
     
     update(dt) {
-        if (this.currentJob && this.currentJob.state === JobState.IN_PROGRESS) {
-            const progress = this.currentJob.getProgress();
+        if (this.currentRun && this.currentRun.state === JobState.IN_PROGRESS) {
+            const slot = this.getSlot(this.currentRun.slotId);
+            if (!slot) return;
+            
+            const progress = this.currentRun.getProgress(slot.durationHint);
             if (progress >= 1.0) {
                 this.completeJob();
                 this.payoutJob();

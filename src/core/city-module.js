@@ -112,6 +112,7 @@ class ActivitySlot {
         this.description = config.description || '';
         this.kind = config.kind || 'activity';
         this.payoutStub = config.payoutStub || null;
+        this.xpStub = config.xpStub || null;
     }
     
     isUnlocked(playerState = null) {

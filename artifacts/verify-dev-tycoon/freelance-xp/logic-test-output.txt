@@ -1,0 +1,48 @@
+=== Slice-3 Freelance Logic Test ===
+
+Test 1: ActivitySlot as source of truth
+  Slot ID: cafe-bugfix-1
+  Slot name: Quick bugfix
+  Payout: { currency: 'cash', amount: 50 }
+  XP stub: { skill: 'coding', amount: 10 }
+  ✅ PASS: Slot data retrieved from cityModule
+
+Test 2: JobRun minimal state model
+  Run slot ID: cafe-bugfix-1
+  Run state: offered
+  Run has name property? false
+  Run has payoutStub property? false
+  ✅ PASS: JobRun only tracks slotId + state
+
+Test 3: Full workflow (offer → accept → start → complete → payout)
+  Accepted: true
+  Started: true
+  Completed: true
+  Paid: true
+  Payout result: {
+  payout: { currency: 'cash', amount: 50 },
+  xp: { skill: 'coding', amount: 10 }
+}
+  Cash balance: 50
+  Coding XP: 10
+  ✅ PASS: Workflow applies payout AND xp
+
+Test 4: SkillsStub accumulation
+  All skills: { coding: 25, design: 5 }
+  Coding XP (accumulated): 25
+  Design XP: 5
+  ✅ PASS: SkillsStub tracks multiple skills
+
+Test 5: HUD payout display
+  Expected HUD: +$50 · +10 coding XP
+  ✅ PASS: Correct format "+$50 · +10 coding XP"
+
+=== All Tests Passed ===
+
+Summary:
+  - ActivitySlot is source of truth ✅
+  - FreelanceSystem is thin runner ✅
+  - JobRun tracks minimal state (slotId only) ✅
+  - Payout applies cash AND XP ✅
+  - SkillsStub accumulates XP correctly ✅
+  - HUD format matches spec ✅
