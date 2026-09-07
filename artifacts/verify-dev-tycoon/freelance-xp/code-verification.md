@@ -12,14 +12,16 @@
 ```javascript
 new ActivitySlot('cafe-bugfix-1', {
     name: 'Quick bugfix',
-    skillTags: ['coding'],
+    skillTags: ['coding'],  // ← SoT for XP skill
     unlockRule: null,
     durationHint: 30,
     kind: 'freelance',
     payoutStub: { currency: 'cash', amount: 50 },
-    xpStub: { skill: 'coding', amount: 10 }
+    xpStub: { amount: 10 }  // skill field removed
 })
 ```
+
+**SoT Alignment**: `xpStub.skill` removed — XP awarded to `skillTags[0]` only
 
 **ActivitySlot model updated** (`src/core/city-module.js:105-115`):
 - Added `xpStub` property to ActivitySlot constructor

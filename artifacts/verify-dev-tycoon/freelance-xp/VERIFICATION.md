@@ -28,12 +28,12 @@ This verification covers the implementation of slice-3, which folds FreelanceSys
 The cafe-bugfix-1 ActivitySlot now defines:
 - `id`: "cafe-bugfix-1"
 - `name`: "Quick bugfix"
-- `skillTags`: ["coding"]
+- `skillTags`: ["coding"] ← **SoT for XP skill**
 - `unlockRule`: null
 - `durationHint`: 30
 - `kind`: "freelance"
 - `payoutStub`: { currency: "cash", amount: 50 }
-- `xpStub`: { skill: "coding", amount: 10 }
+- `xpStub`: { amount: 10 }
 
 **Evidence**: See `code-verification.md` lines 9-19
 
@@ -72,7 +72,7 @@ Net reduction: -10 lines (removed duplication)
 
 ### ✅ Payout Applies Cash AND XP
 
-**Location**: `src/systems/freelance-system.js:189-213`
+**Location**: `src/systems/freelance-system.js:126-156`
 
 ```javascript
 payoutJob() {
@@ -84,10 +84,14 @@ payoutJob() {
         this.cashBalance += payout.amount;
     }
     
-    // Apply XP
-    const xp = slot.xpStub;
-    if (xp && this.skillsStub) {
-        this.skillsStub.addXp(xp.skill, xp.amount);
+    // Apply XP - skillTags[0] is SoT for skill name
+    const xpStub = slot.xpStub;
+    const skillTag = slot.skillTags[0];
+    
+    let xp = null;
+    if (xpStub && xpStub.amount && skillTag && this.skillsStub) {
+        this.skillsStub.addXp(skillTag, xpStub.amount);
+        xp = { skill: skillTag, amount: xpStub.amount };
     }
     
     return { payout, xp };
@@ -95,6 +99,7 @@ payoutJob() {
 ```
 
 **Evidence**: Logic test confirms XP is applied alongside payout
+**SoT**: `skillTags[0]` wins — XP awarded to first skill tag, not divergent xpStub.skill field
 
 ### ✅ HUD Displays XP
 

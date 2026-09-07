@@ -136,9 +136,13 @@ class FreelanceSystem {
             this.cashBalance += payout.amount;
         }
         
-        const xp = slot.xpStub;
-        if (xp && this.skillsStub) {
-            this.skillsStub.addXp(xp.skill, xp.amount);
+        const xpStub = slot.xpStub;
+        const skillTag = slot.skillTags && slot.skillTags.length > 0 ? slot.skillTags[0] : null;
+        
+        let xp = null;
+        if (xpStub && xpStub.amount && skillTag && this.skillsStub) {
+            this.skillsStub.addXp(skillTag, xpStub.amount);
+            xp = { skill: skillTag, amount: xpStub.amount };
         }
         
         this.notifyListeners('jobPaid', { 

@@ -154,7 +154,7 @@ class CityGenerator {
                     durationHint: 30,
                     kind: 'freelance',
                     payoutStub: { currency: 'cash', amount: 50 },
-                    xpStub: { skill: 'coding', amount: 10 }
+                    xpStub: { amount: 10 }
                 })
             ]
         });
