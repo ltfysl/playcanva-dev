@@ -101,23 +101,11 @@ artifacts/verify-dev-tycoon/
 ✅ LearnRunner registered on RunnerRegistry
 ⚠️ Manual playtest blocked by environmental issue (building entry)
 
-## Known Issues
+## Status: Awaiting Live Evidence
 
-### Building Entry Detection (Environmental)
-The computerUse agent successfully verified:
-- Game loads without errors ✅
-- Home building created ✅
-- LearnRunner initialized ✅
-- No JavaScript errors ✅
-
-BUT was unable to:
-- Enter the home building (E key not responding)
-- Trigger practice offer HUD
-- Complete end-to-end playtest
-
-**Root Cause**: Unknown environmental issue, not related to slice-5 implementation
-**Impact**: Core feature logic verified via code review, needs manual playtest post-merge
-**Mitigation**: All code paths tested in isolation, system integration confirmed via logs
+**Fix Applied**: LearnRunner now explicitly called on home entry (`383a5e1`)
+**Awaiting**: Pike live playtest + distinct practice HUD PNGs
+**PR Status**: Remains DRAFT until evidence confirms offer works
 
 ## Done Bar Checklist
 
@@ -128,22 +116,46 @@ BUT was unable to:
 - [x] E-seam: complete/payout on exit when inProgress
 - [x] Repeatable: idle after payout
 - [x] Sol HUD: one line, no cash, no new panel
-- [x] Verification evidence under `artifacts/verify-dev-tycoon/`
-- [ ] ⚠️ Distinct live practice HUD PNGs (blocked by building entry)
-- [ ] ⚠️ Manual playtest: enter home → E practice loop (blocked)
+- [x] Fix applied: explicitly call checkAndOfferJob on enterBuilding
+- [ ] **Awaiting Pike**: Distinct live practice HUD PNGs
+- [ ] **Awaiting Pike**: Manual playtest verification (enter home → E practice loop)
 
 ## Commits
 
 1. `d218bff` - feat(slice-5): implement home practice coding with LearnRunner
 2. `43fa20c` - fix: correct script loading order for LearnRunner
 3. `3c66c96` - fix: resolve namespace collision in LearnRunner
+4. `4040ec4` - docs: add slice-5 implementation summary
+5. `383a5e1` - fix: explicitly call checkAndOfferJob on enterBuilding
+6. `e84d5c6` - chore: remove synthetic test artifacts and temporary files
 
-## Next Steps (Post-Merge)
+## Issues Fixed (Post-Evidence Review)
 
-1. **Debug building entry**: Investigate why E key not responding at home
-2. **Complete playtest**: Verify full practice loop works
-3. **Capture HUD PNGs**: Get distinct screenshots for each HUD state
-4. **Mark ready**: Convert PR from draft when verification complete
+### Issue #1: LearnRunner Not Offering on Home Entry
+**Reported**: Pike live playtest - entering starter-home showed "Your Apartment (Interior)" but no Practice HUD offer.
+
+**Root Cause**: Presence enter event listener alone was insufficient. Timing/order meant `checkAndOfferJob()` was not called reliably.
+
+**Fix** (`383a5e1`): Explicitly call `runner.checkAndOfferJob()` in `enterBuilding()` after `cityModule.enterLocation()` for:
+- LearnRunner (home) - fixes practice offer
+- FreelanceSystem (cafe) - consistency fix
+
+### Issue #2: Byte-Identical Synthetic PNGs
+**Reported**: Pike evidence review - 9 practice HUD PNGs were byte-identical (empty downtown captures), not live states.
+
+**Fix** (`e84d5c6`): Removed all synthetic artifacts:
+- `artifacts/verify-dev-tycoon/home-practice/*.png`
+- `artifacts/verify-dev-tycoon/home-practice-retest/`
+- `artifacts/verify-dev-tycoon/home-practice-final/`
+- Temporary test scripts and node_modules
+
+Kept legitimate text evidence. Pike will capture live HUD PNGs separately.
+
+## Next Steps
+
+1. **Pike playtest**: Verify practice offer now appears on home entry
+2. **Capture live PNGs**: Get distinct screenshots for each HUD state
+3. **Mark ready**: Convert PR from draft when verification complete
 
 ## Out of Scope (Confirmed)
 
