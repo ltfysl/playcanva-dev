@@ -120,6 +120,16 @@ class GameManager {
                 this.freelanceSystem.on('jobPaid', (data) => {
                     this.solHUD.showPayout(data.payout.amount, data.xp);
                     console.log('Job paid:', data.payout.amount, 'XP awarded:', data.xp, 'New balance:', data.newBalance);
+                    
+                    setTimeout(() => {
+                        this.freelanceSystem.checkAndOfferJob();
+                    }, 1600);
+                });
+                
+                this.freelanceSystem.on('jobLocked', (data) => {
+                    if (data.slot.unlockRule) {
+                        this.solHUD.showLocked(data.slot.unlockRule, this.skillsStub);
+                    }
                 });
                 
                 this.cityModule.getPresence().on('enter', (data) => {

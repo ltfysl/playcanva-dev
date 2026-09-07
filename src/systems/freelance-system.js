@@ -37,7 +37,8 @@ class FreelanceSystem {
             jobAccepted: [],
             jobStarted: [],
             jobCompleted: [],
-            jobPaid: []
+            jobPaid: [],
+            jobLocked: []
         };
         
         this.setupPresenceListeners();
@@ -102,11 +103,37 @@ class FreelanceSystem {
         if (!isIdle || !isAtLocation) return;
         
         const slot = this.getNextOfferable();
-        if (!slot) return;
+        if (slot) {
+            this.currentRun = new JobRun(slot.id);
+            this.currentRun.state = JobState.OFFERED;
+            this.notifyListeners('jobOffered', { slotId: slot.id, slot });
+        } else {
+            const nextLockedSlot = this.getNextLockedSlot();
+            if (nextLockedSlot) {
+                this.notifyListeners('jobLocked', { slot: nextLockedSlot });
+            }
+        }
+    }
+    
+    getNextLockedSlot() {
+        const cafeLocation = this.cityModule.getLocation(this.cafeLocationId);
+        if (!cafeLocation) return null;
         
-        this.currentRun = new JobRun(slot.id);
-        this.currentRun.state = JobState.OFFERED;
-        this.notifyListeners('jobOffered', { slotId: slot.id, slot });
+        const slots = cafeLocation.getActivitySlots();
+        for (const slot of slots) {
+            if (slot.kind !== 'freelance') continue;
+            
+            const history = this.slotHistory.get(slot.id);
+            if (history && history.state === JobState.PAID) {
+                continue;
+            }
+            
+            if (!slot.isUnlocked(this.skillsStub)) {
+                return slot;
+            }
+        }
+        
+        return null;
     }
     
     acceptJob() {
