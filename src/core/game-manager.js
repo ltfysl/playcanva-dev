@@ -303,6 +303,14 @@ class GameManager {
         if (this.cityModule) {
             const locationId = new LocationId(building.districtId, building.id);
             this.cityModule.enterLocation(locationId);
+            
+            if (this.learnRunner && locationId.toString() === this.learnRunner.homeLocationId.toString()) {
+                this.learnRunner.checkAndOfferJob();
+            }
+            
+            if (this.freelanceSystem && locationId.toString() === this.freelanceSystem.cafeLocationId.toString()) {
+                this.freelanceSystem.checkAndOfferJob();
+            }
         }
     }
     

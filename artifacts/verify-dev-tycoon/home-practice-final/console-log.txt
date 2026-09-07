@@ -1,0 +1,20 @@
+Dev Tycoon - City Hub initialized
+Ammo physics ready, true
+Click to lock cursor, WASD to move, E to interact
+Generating city...
+Starter home created at x = (r: c, y: 0, z: c)
+City generated with 9 districts
+Nighttime
+Lighting system initialized
+Game Manager initialized
+[Script Warning] net::ERR_FILE_NOT_FOUND 404 (File not found)
+  Failed to load resource: net::ERR_FILE_NOT_FOUND http://localhost:8000/favicon.ico:1
+  [Crossorigin attribute error - allows scripts from different origins]
+GET http://localhost:8000/favicon.ico 404 (File not found)
+Daytime
+window.gameManager.playerController.entity.setPosition(15, 0, 20)
+  Uncaught TypeError: Cannot read properties of undefined (reading 'entity')
+    at <anonymous>:1:37
+app.root.findByName('player').setPosition(15, 0, 20)
+  undefined
+Nighttime
