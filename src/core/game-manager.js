@@ -193,6 +193,54 @@ class GameManager {
         checkLearnRunner();
     }
     
+    setupCareerListeners() {
+        const checkCareerRunner = () => {
+            if (this.careerRunner) {
+                runnerRegistry.register('career', this.careerRunner);
+                
+                this.careerRunner.on('jobOffered', (data) => {
+                    const payout = data.slot.payoutStub.amount;
+                    this.solHUD.showJobOffer(data.slot.name, payout);
+                });
+                
+                this.careerRunner.on('jobAccepted', (data) => {
+                    this.careerRunner.startJob();
+                });
+                
+                this.careerRunner.on('jobStarted', (data) => {
+                    this.solHUD.showCareerInProgress();
+                });
+                
+                this.careerRunner.on('jobPaid', (data) => {
+                    this.solHUD.showPayout(data.payout.amount, data.xp);
+                    console.log('Career job paid:', data.payout.amount, 'XP awarded:', data.xp, 'New balance:', data.newBalance);
+                });
+                
+                this.careerRunner.on('jobLocked', (data) => {
+                    if (data.slot.unlockRule) {
+                        this.solHUD.showLocked(data.slot.unlockRule, this.skillsStub);
+                    }
+                });
+                
+                this.cityModule.getPresence().on('enter', (data) => {
+                    if (data.location.toString() === this.careerRunner.officeLocationId.toString()) {
+                        this.careerRunner.checkAndOfferJob();
+                    }
+                });
+                
+                this.cityModule.getPresence().on('exit', (data) => {
+                    if (data.location.toString() === this.careerRunner.officeLocationId.toString()) {
+                        this.solHUD.hide();
+                    }
+                });
+            } else {
+                setTimeout(checkCareerRunner, 100);
+            }
+        };
+        
+        checkCareerRunner();
+    }
+    
     updateSolHUDForLocation() {
         if (!this.freelanceSystem || !this.solHUD) return;
         
