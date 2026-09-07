@@ -153,14 +153,19 @@ class CityGenerator {
                     unlockRule: null,
                     durationHint: 30,
                     kind: 'freelance',
-                    payoutStub: { currency: 'cash', amount: 50 }
+                    payoutStub: { currency: 'cash', amount: 50 },
+                    xpStub: { skill: 'coding', amount: 10 }
                 })
             ]
         });
         
         this.cityModule.registerLocation(cafeLocation);
         
-        this.freelanceSystem = new FreelanceSystem(this.cityModule, locationId);
+        this.freelanceSystem = new FreelanceSystem(
+            this.cityModule, 
+            locationId, 
+            this.gameManager.skillsStub
+        );
         this.gameManager.freelanceSystem = this.freelanceSystem;
     }
     

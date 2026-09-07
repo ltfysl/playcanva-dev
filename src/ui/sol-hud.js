@@ -49,8 +49,12 @@ class SolHUD {
         this.show('Fixing…', 'inProgress');
     }
     
-    showPayout(amount) {
-        this.show(`+$${amount}`, 'payout');
+    showPayout(amount, xp = null) {
+        let text = `+$${amount}`;
+        if (xp && xp.amount && xp.skill) {
+            text += ` · +${xp.amount} ${xp.skill} XP`;
+        }
+        this.show(text, 'payout');
         
         if (this.payoutFlashTimeout) {
             clearTimeout(this.payoutFlashTimeout);
