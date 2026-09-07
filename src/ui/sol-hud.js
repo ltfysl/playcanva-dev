@@ -72,6 +72,28 @@ class SolHUD {
         }, 1500);
     }
     
+    showLearnOffer(jobName, xpAmount) {
+        this.show(`E — ${jobName} (+${xpAmount} coding XP)`, 'offered');
+    }
+    
+    showLearnInProgress() {
+        this.show('Practicing…', 'inProgress');
+    }
+    
+    showLearnPayout(xp) {
+        let text = `+${xp.amount} ${xp.skill} XP`;
+        this.show(text, 'payout');
+        
+        if (this.payoutFlashTimeout) {
+            clearTimeout(this.payoutFlashTimeout);
+        }
+        
+        this.payoutFlashTimeout = setTimeout(() => {
+            this.hide();
+            this.payoutFlashTimeout = null;
+        }, 1500);
+    }
+    
     showLocked(unlockRule, skillsStub) {
         const currentXp = skillsStub ? skillsStub.getXp(unlockRule.skill) : 0;
         const text = `Locked — ${unlockRule.skill} XP ${currentXp}/${unlockRule.minXp}`;

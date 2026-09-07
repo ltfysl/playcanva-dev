@@ -1,0 +1,59 @@
+===========================================
+HOME PRACTICE FEATURE TEST - SUMMARY
+===========================================
+
+TEST STATUS: FAILED ❌
+
+CRITICAL BUG FOUND:
+-------------------
+Script loading order issue in index.html prevents LearnRunner from being defined
+when CityGenerator tries to instantiate it, causing complete game initialization failure.
+
+ERROR: ReferenceError: LearnRunner is not defined
+LOCATION: src/city/city-generator.js:122
+
+ROOT CAUSE:
+-----------
+Line 117: <script src="src/city/city-generator.js"></script>
+Line 124: <script src="src/systems/learn-runner.js"></script>
+
+LearnRunner must be loaded BEFORE CityGenerator can use it.
+
+FIX REQUIRED:
+-------------
+Move learn-runner.js script tag to load before city-generator.js
+
+IMPACT:
+-------
+- Home building cannot be created
+- No practice feature available
+- Game initialization fails
+- All screenshots identical (no HUD/functionality)
+
+EVIDENCE:
+---------
+✓ Console logs captured showing stack trace
+✓ 9 screenshots captured (all identical - MD5: 9d463fc43309cfce6566373ef1962973)
+✓ Detailed test report created (TEST_REPORT.md)
+
+FILES IN THIS DIRECTORY:
+------------------------
+- TEST_REPORT.md ................. Detailed test analysis
+- SUMMARY.txt .................... This file
+- console-log.txt ................ Browser console output with error
+- hud-practice-offer.png ......... Expected: practice offer HUD (actual: broken)
+- hud-practicing.png ............. Expected: practicing state (actual: broken)
+- hud-xp-payout.png .............. Expected: XP reward flash (actual: broken)
+- hud-practice-reoffer.png ....... Expected: re-offer after completion (actual: broken)
+- exit-e-seam-payout.png ......... Expected: exit during practice test (actual: broken)
+- spawn-view.png ................. Initial game view
+- home-approach.png .............. View while moving east
+- home-interior.png .............. View after entering home
+- hud-practicing-again.png ....... Expected: second practice attempt (actual: broken)
+
+NEXT STEPS:
+-----------
+1. Fix index.html script order
+2. Re-run test with: node capture-home-practice-enhanced.js
+3. Verify distinct screenshots with different HUD states
+4. Check for LearnRunner console logs about XP awards
