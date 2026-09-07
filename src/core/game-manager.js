@@ -359,6 +359,10 @@ class GameManager {
             if (this.freelanceSystem && locationId.toString() === this.freelanceSystem.cafeLocationId.toString()) {
                 this.freelanceSystem.checkAndOfferJob();
             }
+            
+            if (this.careerRunner && locationId.toString() === this.careerRunner.officeLocationId.toString()) {
+                this.careerRunner.checkAndOfferJob();
+            }
         }
     }
     
