@@ -3,6 +3,7 @@ class SolHUD {
         this.element = null;
         this.currentState = null;
         this.payoutFlashTimeout = null;
+        this.lockedUpdateInterval = null;
         
         this.create();
     }
@@ -39,6 +40,11 @@ class SolHUD {
     hide() {
         this.element.style.opacity = '0';
         this.currentState = null;
+        
+        if (this.lockedUpdateInterval) {
+            clearInterval(this.lockedUpdateInterval);
+            this.lockedUpdateInterval = null;
+        }
     }
     
     showJobOffer(jobName, payoutAmount) {
@@ -64,6 +70,24 @@ class SolHUD {
             this.hide();
             this.payoutFlashTimeout = null;
         }, 1500);
+    }
+    
+    showLocked(unlockRule, skillsStub) {
+        const currentXp = skillsStub ? skillsStub.getXp(unlockRule.skill) : 0;
+        const text = `Locked — ${unlockRule.skill} XP ${currentXp}/${unlockRule.minXp}`;
+        this.show(text, 'locked');
+        
+        if (this.lockedUpdateInterval) {
+            clearInterval(this.lockedUpdateInterval);
+        }
+        
+        this.lockedUpdateInterval = setInterval(() => {
+            if (this.currentState === 'locked' && skillsStub) {
+                const updatedXp = skillsStub.getXp(unlockRule.skill);
+                const updatedText = `Locked — ${unlockRule.skill} XP ${updatedXp}/${unlockRule.minXp}`;
+                this.element.textContent = updatedText;
+            }
+        }, 100);
     }
     
     getCurrentState() {

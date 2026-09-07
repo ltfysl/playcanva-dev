@@ -115,9 +115,12 @@ class ActivitySlot {
         this.xpStub = config.xpStub || null;
     }
     
-    isUnlocked(playerState = null) {
+    isUnlocked(skillsStub = null) {
         if (!this.unlockRule) return true;
-        return false;
+        if (!skillsStub) return false;
+        
+        const { skill, minXp } = this.unlockRule;
+        return skillsStub.getXp(skill) >= minXp;
     }
     
     getSkillTags() {
