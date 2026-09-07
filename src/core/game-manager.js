@@ -102,6 +102,8 @@ class GameManager {
     setupFreelanceListeners() {
         const checkFreelanceSystem = () => {
             if (this.freelanceSystem) {
+                runnerRegistry.register('freelance', this.freelanceSystem);
+                
                 this.freelanceSystem.on('jobOffered', (data) => {
                     const payout = data.slot.payoutStub.amount;
                     this.solHUD.showJobOffer(data.slot.name, payout);
@@ -119,12 +121,51 @@ class GameManager {
                     this.solHUD.showPayout(data.payout.amount, data.xp);
                     console.log('Job paid:', data.payout.amount, 'XP awarded:', data.xp, 'New balance:', data.newBalance);
                 });
+                
+                this.cityModule.getPresence().on('enter', (data) => {
+                    if (data.location.toString() === this.freelanceSystem.cafeLocationId.toString()) {
+                        this.updateSolHUDForLocation();
+                    }
+                });
+                
+                this.cityModule.getPresence().on('exit', (data) => {
+                    if (data.location.toString() === this.freelanceSystem.cafeLocationId.toString()) {
+                        this.solHUD.hide();
+                    }
+                });
             } else {
                 setTimeout(checkFreelanceSystem, 100);
             }
         };
         
         checkFreelanceSystem();
+    }
+    
+    updateSolHUDForLocation() {
+        if (!this.freelanceSystem || !this.solHUD) return;
+        
+        const currentRun = this.freelanceSystem.getCurrentRun();
+        if (currentRun && currentRun.state !== 'idle') {
+            return;
+        }
+        
+        const cafeLocation = this.cityModule.getLocation(this.freelanceSystem.cafeLocationId);
+        if (!cafeLocation) return;
+        
+        const slots = cafeLocation.getActivitySlots();
+        const freelanceSlots = slots.filter(s => s.kind === 'freelance');
+        
+        for (const slot of freelanceSlots) {
+            const history = this.freelanceSystem.slotHistory.get(slot.id);
+            if (history && history.state === 'paid') {
+                continue;
+            }
+            
+            if (!slot.isUnlocked(this.skillsStub)) {
+                this.solHUD.showLocked(slot.unlockRule, this.skillsStub);
+                return;
+            }
+        }
     }
     
     setupInputHandlers() {
