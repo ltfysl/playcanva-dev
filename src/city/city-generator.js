@@ -218,20 +218,22 @@ class CityGenerator {
             districtId
         );
         
+        cowork.unlockRule = { skill: 'coding', minXp: 25 };
+        
         const coworkLocation = new LocationData(locationId, BuildingKind.COWORK, {
             name: 'Hub Cowork',
             unlockState: UnlockState.LOCKED,
+            unlockRule: { skill: 'coding', minXp: 25 },
             position: coworkPosition,
             activitySlots: [
-                new ActivitySlot('focus-work', {
-                    name: 'Focus Work',
-                    skillTags: [],
-                    durationHint: 180
-                }),
-                new ActivitySlot('collaboration', {
-                    name: 'Collaborate',
-                    skillTags: [],
-                    durationHint: 90
+                new ActivitySlot('cowork-focus-1', {
+                    name: 'Deep focus',
+                    skillTags: ['coding'],
+                    unlockRule: null,
+                    durationHint: 35,
+                    kind: 'learn',
+                    payoutStub: null,
+                    xpStub: { amount: 8 }
                 })
             ]
         });
