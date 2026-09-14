@@ -76,8 +76,8 @@ class SolHUD {
         }, 1500);
     }
     
-    showLearnOffer(jobName, xpAmount) {
-        this.show(`E — ${jobName} (+${xpAmount} coding XP)`, 'offered');
+    showLearnOffer(jobName, xpAmount, skillTag = 'coding') {
+        this.show(`E — ${jobName} (+${xpAmount} ${skillTag} XP)`, 'offered');
     }
     
     showLearnInProgress(label = 'Practicing…') {

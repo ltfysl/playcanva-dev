@@ -162,7 +162,8 @@ class GameManager {
                 
                 this.learnRunner.on('jobOffered', (data) => {
                     const xp = data.slot.xpStub.amount;
-                    this.solHUD.showLearnOffer(data.slot.name, xp);
+                    const skillTag = data.slot.skillTags && data.slot.skillTags.length > 0 ? data.slot.skillTags[0] : 'coding';
+                    this.solHUD.showLearnOffer(data.slot.name, xp, skillTag);
                 });
                 
                 this.learnRunner.on('jobAccepted', (data) => {

@@ -105,6 +105,15 @@ class CityGenerator {
                     payoutStub: null,
                     xpStub: { amount: 5 }
                 }),
+                new ActivitySlot('home-design-1', {
+                    name: 'Practice design',
+                    skillTags: ['design'],
+                    unlockRule: null,
+                    durationHint: 20,
+                    kind: 'learn',
+                    payoutStub: null,
+                    xpStub: { amount: 5 }
+                }),
                 new ActivitySlot('work-desk', {
                     name: 'Work at Desk',
                     skillTags: [],
