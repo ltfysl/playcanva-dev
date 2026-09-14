@@ -12,6 +12,7 @@ class GameManager {
         this.buildings = [];
         this.freelanceSystem = null;
         this.learnRunner = null;
+        this.careerRunner = null;
         this.solHUD = null;
         this.skillsStub = new SkillsStub();
     }
@@ -99,6 +100,7 @@ class GameManager {
         this.solHUD = new SolHUD();
         this.setupFreelanceListeners();
         this.setupLearnListeners();
+        this.setupCareerListeners();
     }
     
     setupFreelanceListeners() {
@@ -191,6 +193,54 @@ class GameManager {
         };
         
         checkLearnRunner();
+    }
+    
+    setupCareerListeners() {
+        const checkCareerRunner = () => {
+            if (this.careerRunner) {
+                runnerRegistry.register('career', this.careerRunner);
+                
+                this.careerRunner.on('jobOffered', (data) => {
+                    const payout = data.slot.payoutStub.amount;
+                    this.solHUD.showJobOffer(data.slot.name, payout);
+                });
+                
+                this.careerRunner.on('jobAccepted', (data) => {
+                    this.careerRunner.startJob();
+                });
+                
+                this.careerRunner.on('jobStarted', (data) => {
+                    this.solHUD.showCareerInProgress();
+                });
+                
+                this.careerRunner.on('jobPaid', (data) => {
+                    this.solHUD.showPayout(data.payout.amount, data.xp);
+                    console.log('Career job paid:', data.payout.amount, 'XP awarded:', data.xp, 'New balance:', data.newBalance);
+                });
+                
+                this.careerRunner.on('jobLocked', (data) => {
+                    if (data.slot.unlockRule) {
+                        this.solHUD.showLocked(data.slot.unlockRule, this.skillsStub);
+                    }
+                });
+                
+                this.cityModule.getPresence().on('enter', (data) => {
+                    if (data.location.toString() === this.careerRunner.officeLocationId.toString()) {
+                        this.careerRunner.checkAndOfferJob();
+                    }
+                });
+                
+                this.cityModule.getPresence().on('exit', (data) => {
+                    if (data.location.toString() === this.careerRunner.officeLocationId.toString()) {
+                        this.solHUD.hide();
+                    }
+                });
+            } else {
+                setTimeout(checkCareerRunner, 100);
+            }
+        };
+        
+        checkCareerRunner();
     }
     
     updateSolHUDForLocation() {
@@ -311,6 +361,10 @@ class GameManager {
             if (this.freelanceSystem && locationId.toString() === this.freelanceSystem.cafeLocationId.toString()) {
                 this.freelanceSystem.checkAndOfferJob();
             }
+            
+            if (this.careerRunner && locationId.toString() === this.careerRunner.officeLocationId.toString()) {
+                this.careerRunner.checkAndOfferJob();
+            }
         }
     }
     
@@ -357,6 +411,10 @@ class GameManager {
         
         if (this.learnRunner) {
             this.learnRunner.update(dt);
+        }
+        
+        if (this.careerRunner) {
+            this.careerRunner.update(dt);
         }
         
         this.checkDistrictTransition();

@@ -14,6 +14,7 @@ class CityGenerator {
         this.createDistricts();
         this.createStarterHome();
         this.createCafe();
+        this.createOffice();
         this.createCoworkSpace();
         this.createSkylineProps();
         
@@ -237,6 +238,64 @@ class CityGenerator {
         });
         
         this.cityModule.registerLocation(coworkLocation);
+    }
+    
+    createOffice() {
+        const downtownDistrict = this.districts.find(d => d.id === 'downtown');
+        if (!downtownDistrict) return;
+        
+        const officePosition = new pc.Vec3(
+            -GameConfig.city.blockSize * 2,
+            0,
+            -GameConfig.city.blockSize * 1.5
+        );
+        
+        const districtId = downtownDistrict.id;
+        const locationId = new LocationId(districtId, 'downtown-office');
+        
+        const office = new Building(
+            this.app,
+            this.gameManager,
+            'downtown-office',
+            'Downtown Office',
+            officePosition,
+            'office',
+            UnlockState.AVAILABLE,
+            districtId
+        );
+        
+        office.setEnterable(true);
+        
+        const interior = new OfficeInterior(this.app, this.gameManager, office);
+        office.setInterior(interior);
+        
+        const officeLocation = new LocationData(locationId, BuildingKind.OFFICE, {
+            name: 'Downtown Office',
+            unlockState: UnlockState.AVAILABLE,
+            position: officePosition,
+            activitySlots: [
+                new ActivitySlot('office-ticket-1', {
+                    name: 'Fix production ticket',
+                    skillTags: ['coding'],
+                    unlockRule: { skill: 'coding', minXp: 15 },
+                    durationHint: 40,
+                    kind: 'career',
+                    payoutStub: { currency: 'cash', amount: 120 },
+                    xpStub: { amount: 20 }
+                })
+            ]
+        });
+        
+        this.cityModule.registerLocation(officeLocation);
+        
+        this.careerRunner = new CareerRunner(
+            this.cityModule,
+            locationId,
+            this.gameManager.skillsStub
+        );
+        this.gameManager.careerRunner = this.careerRunner;
+        
+        console.log('Downtown office created at', officePosition);
     }
     
     createSkylineProps() {
