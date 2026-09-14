@@ -170,7 +170,12 @@ class GameManager {
                 });
                 
                 this.learnRunner.on('jobStarted', (data) => {
-                    this.solHUD.showLearnInProgress();
+                    const currentLocation = this.cityModule.getCurrentLocation();
+                    if (currentLocation && currentLocation.buildingKind === BuildingKind.COWORK) {
+                        this.solHUD.showLearnInProgressFocusing();
+                    } else {
+                        this.solHUD.showLearnInProgress();
+                    }
                 });
                 
                 this.learnRunner.on('jobPaid', (data) => {
@@ -183,8 +188,12 @@ class GameManager {
                 });
                 
                 this.cityModule.getPresence().on('exit', (data) => {
-                    if (data.location.toString() === this.learnRunner.homeLocationId.toString()) {
-                        this.solHUD.hide();
+                    const location = this.cityModule.getLocation(data.location);
+                    if (location) {
+                        const hasLearnSlots = location.getActivitySlots().some(s => s.kind === 'learn');
+                        if (hasLearnSlots) {
+                            this.solHUD.hide();
+                        }
                     }
                 });
             } else {
@@ -335,11 +344,41 @@ class GameManager {
                 const locationId = new LocationId(building.districtId, building.id);
                 const location = this.cityModule.getLocation(locationId);
                 
-                if (location && location.canEnter() && building.interior) {
+                if (!location) continue;
+                
+                if (location.isLocked() && location.unlockRule) {
+                    this.checkAndUnlockLocation(location, building);
+                }
+                
+                if (location.isLocked() && location.unlockRule) {
+                    this.solHUD.showLocked(location.unlockRule, this.skillsStub);
+                    return;
+                }
+                
+                if (location.canEnter() && building.interior) {
                     this.enterBuilding(building);
                     return;
                 }
             }
+        }
+    }
+    
+    checkAndUnlockLocation(location, building) {
+        if (!location.unlockRule) return;
+        
+        const { skill, minXp } = location.unlockRule;
+        const currentXp = this.skillsStub.getXp(skill);
+        
+        if (currentXp >= minXp) {
+            location.unlockState = UnlockState.AVAILABLE;
+            building.setEnterable(true);
+            
+            if (building.kind === 'cowork') {
+                const interior = new HomeInterior(this.app, this, building);
+                building.setInterior(interior);
+            }
+            
+            console.log(`Unlocked building: ${location.name}`);
         }
     }
     
@@ -354,8 +393,12 @@ class GameManager {
             const locationId = new LocationId(building.districtId, building.id);
             this.cityModule.enterLocation(locationId);
             
-            if (this.learnRunner && locationId.toString() === this.learnRunner.homeLocationId.toString()) {
-                this.learnRunner.checkAndOfferJob();
+            const location = this.cityModule.getLocation(locationId);
+            if (location) {
+                const hasLearnSlots = location.getActivitySlots().some(s => s.kind === 'learn');
+                if (hasLearnSlots && this.learnRunner) {
+                    this.learnRunner.checkAndOfferJob();
+                }
             }
             
             if (this.freelanceSystem && locationId.toString() === this.freelanceSystem.cafeLocationId.toString()) {

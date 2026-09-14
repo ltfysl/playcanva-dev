@@ -42,18 +42,18 @@ class LearnRunner {
     }
     
     getSlot(slotId) {
-        const homeLocation = this.cityModule.getLocation(this.homeLocationId);
-        if (!homeLocation) return null;
+        const currentLocation = this.cityModule.getCurrentLocation();
+        if (!currentLocation) return null;
         
-        const slots = homeLocation.getActivitySlots();
+        const slots = currentLocation.getActivitySlots();
         return slots.find(s => s.id === slotId);
     }
     
     getAvailableSlots() {
-        const homeLocation = this.cityModule.getLocation(this.homeLocationId);
-        if (!homeLocation) return [];
+        const currentLocation = this.cityModule.getCurrentLocation();
+        if (!currentLocation) return [];
         
-        const slots = homeLocation.getActivitySlots();
+        const slots = currentLocation.getActivitySlots();
         return slots.filter(slot => {
             if (slot.kind !== 'learn') return false;
             
@@ -71,30 +71,40 @@ class LearnRunner {
         const presence = this.cityModule.getPresence();
         
         presence.on('enter', (data) => {
-            if (data.location.toString() === this.homeLocationId.toString()) {
-                this.checkAndOfferJob();
+            const location = this.cityModule.getLocation(data.location);
+            if (location) {
+                const hasLearnSlots = location.getActivitySlots().some(s => s.kind === 'learn');
+                if (hasLearnSlots) {
+                    this.checkAndOfferJob();
+                }
             }
         });
         
         presence.on('exit', (data) => {
-            if (data.location.toString() === this.homeLocationId.toString()) {
-                if (this.currentRun && this.currentRun.state === LearnJobState.OFFERED) {
-                    this.currentRun.state = LearnJobState.IDLE;
-                }
-                if (this.currentRun && this.currentRun.state === LearnJobState.IN_PROGRESS) {
-                    this.completeJob();
-                    this.payoutJob();
+            const location = this.cityModule.getLocation(data.location);
+            if (location) {
+                const hasLearnSlots = location.getActivitySlots().some(s => s.kind === 'learn');
+                if (hasLearnSlots) {
+                    if (this.currentRun && this.currentRun.state === LearnJobState.OFFERED) {
+                        this.currentRun.state = LearnJobState.IDLE;
+                    }
+                    if (this.currentRun && this.currentRun.state === LearnJobState.IN_PROGRESS) {
+                        this.completeJob();
+                        this.payoutJob();
+                    }
                 }
             }
         });
     }
     
     checkAndOfferJob() {
-        const presence = this.cityModule.getPresence();
-        const isAtLocation = presence.isAt(this.homeLocationId);
+        const currentLocation = this.cityModule.getCurrentLocation();
         const isIdle = !this.currentRun || this.currentRun.state === LearnJobState.IDLE || this.currentRun.state === LearnJobState.PAID;
         
-        if (!isIdle || !isAtLocation) return;
+        if (!isIdle || !currentLocation) return;
+        
+        const hasLearnSlots = currentLocation.getActivitySlots().some(s => s.kind === 'learn');
+        if (!hasLearnSlots) return;
         
         const slot = this.getNextOfferable();
         if (slot) {
