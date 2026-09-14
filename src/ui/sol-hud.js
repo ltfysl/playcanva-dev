@@ -120,8 +120,9 @@ class SolHUD {
         this.show('Shipping…', 'inProgress');
     }
     
-    showProductPayout(cashAmount, xp, productName) {
-        let text = `+$${cashAmount} · +${xp.amount} ${xp.skill} XP · ${productName} live`;
+    showProductPayout(cashAmount, xp, productId) {
+        const shortLabel = this.getProductShortLabel(productId);
+        let text = `+$${cashAmount} · +${xp.amount} ${xp.skill} XP · ${shortLabel} live`;
         this.show(text, 'payout');
         
         if (this.payoutFlashTimeout) {
@@ -132,6 +133,13 @@ class SolHUD {
             this.hide();
             this.payoutFlashTimeout = null;
         }, 1500);
+    }
+    
+    getProductShortLabel(productId) {
+        const labels = {
+            'mvp-1': 'MVP'
+        };
+        return labels[productId] || productId;
     }
     
     getCurrentState() {

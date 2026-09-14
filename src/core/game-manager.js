@@ -215,7 +215,7 @@ class GameManager {
                 });
                 
                 this.productRunner.on('jobPaid', (data) => {
-                    this.solHUD.showProductPayout(data.cashAmount, data.xp, data.product.name);
+                    this.solHUD.showProductPayout(data.cashAmount, data.xp, data.product.id);
                     console.log('Product shipped:', data.product.name, 'Cash:', data.cashAmount, 'XP:', data.xp);
                     
                     setTimeout(() => {
