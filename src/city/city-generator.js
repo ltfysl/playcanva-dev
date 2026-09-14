@@ -104,6 +104,16 @@ class CityGenerator {
                     payoutStub: null,
                     xpStub: { amount: 5 }
                 }),
+                new ActivitySlot('home-ship-mvp-1', {
+                    name: 'Ship MVP',
+                    skillTags: ['coding'],
+                    unlockRule: { skill: 'coding', minXp: 30 },
+                    durationHint: 50,
+                    kind: 'product',
+                    payoutStub: { currency: 'cash', amount: 80 },
+                    xpStub: { amount: 15 },
+                    productStub: { id: 'mvp-1', name: 'Side Project MVP', mrrStub: 10 }
+                }),
                 new ActivitySlot('work-desk', {
                     name: 'Work at Desk',
                     skillTags: [],
@@ -125,6 +135,17 @@ class CityGenerator {
             this.gameManager.skillsStub
         );
         this.gameManager.learnRunner = this.learnRunner;
+        
+        this.productRegistry = new ProductRegistry();
+        this.gameManager.productRegistry = this.productRegistry;
+        
+        this.productRunner = new ProductRunner(
+            this.cityModule,
+            locationId,
+            this.gameManager.skillsStub,
+            this.productRegistry
+        );
+        this.gameManager.productRunner = this.productRunner;
         
         console.log('Starter home created at', homePosition);
     }

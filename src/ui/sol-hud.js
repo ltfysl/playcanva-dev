@@ -112,6 +112,28 @@ class SolHUD {
         }, 100);
     }
     
+    showProductOffer(jobName, cashAmount) {
+        this.show(`E — ${jobName} (+$${cashAmount})`, 'offered');
+    }
+    
+    showProductInProgress() {
+        this.show('Shipping…', 'inProgress');
+    }
+    
+    showProductPayout(cashAmount, xp, productName) {
+        let text = `+$${cashAmount} · +${xp.amount} ${xp.skill} XP · ${productName} live`;
+        this.show(text, 'payout');
+        
+        if (this.payoutFlashTimeout) {
+            clearTimeout(this.payoutFlashTimeout);
+        }
+        
+        this.payoutFlashTimeout = setTimeout(() => {
+            this.hide();
+            this.payoutFlashTimeout = null;
+        }, 1500);
+    }
+    
     getCurrentState() {
         return this.currentState;
     }

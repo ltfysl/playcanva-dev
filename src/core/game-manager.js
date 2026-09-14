@@ -12,6 +12,8 @@ class GameManager {
         this.buildings = [];
         this.freelanceSystem = null;
         this.learnRunner = null;
+        this.productRunner = null;
+        this.productRegistry = null;
         this.solHUD = null;
         this.skillsStub = new SkillsStub();
     }
@@ -99,6 +101,7 @@ class GameManager {
         this.solHUD = new SolHUD();
         this.setupFreelanceListeners();
         this.setupLearnListeners();
+        this.setupProductListeners();
     }
     
     setupFreelanceListeners() {
@@ -191,6 +194,81 @@ class GameManager {
         };
         
         checkLearnRunner();
+    }
+    
+    setupProductListeners() {
+        const checkProductRunner = () => {
+            if (this.productRunner) {
+                runnerRegistry.register('product', this.productRunner);
+                
+                this.productRunner.on('jobOffered', (data) => {
+                    const cash = data.slot.payoutStub.amount;
+                    this.solHUD.showProductOffer(data.slot.name, cash);
+                });
+                
+                this.productRunner.on('jobAccepted', (data) => {
+                    this.productRunner.startJob();
+                });
+                
+                this.productRunner.on('jobStarted', (data) => {
+                    this.solHUD.showProductInProgress();
+                });
+                
+                this.productRunner.on('jobPaid', (data) => {
+                    this.solHUD.showProductPayout(data.cashAmount, data.xp, data.product.name);
+                    console.log('Product shipped:', data.product.name, 'Cash:', data.cashAmount, 'XP:', data.xp);
+                    
+                    setTimeout(() => {
+                        this.productRunner.checkAndOfferJob();
+                    }, 1600);
+                });
+                
+                this.cityModule.getPresence().on('enter', (data) => {
+                    if (data.location.toString() === this.productRunner.homeLocationId.toString()) {
+                        this.updateHomeHUD();
+                    }
+                });
+                
+                this.cityModule.getPresence().on('exit', (data) => {
+                    if (data.location.toString() === this.productRunner.homeLocationId.toString()) {
+                        this.solHUD.hide();
+                    }
+                });
+            } else {
+                setTimeout(checkProductRunner, 100);
+            }
+        };
+        
+        checkProductRunner();
+    }
+    
+    updateHomeHUD() {
+        if (!this.productRunner || !this.solHUD) return;
+        
+        const currentRun = this.productRunner.getCurrentRun();
+        if (currentRun && currentRun.state !== 'idle' && currentRun.state !== 'paid') {
+            return;
+        }
+        
+        const homeLocation = this.cityModule.getLocation(this.productRunner.homeLocationId);
+        if (!homeLocation) return;
+        
+        const slots = homeLocation.getActivitySlots();
+        const productSlots = slots.filter(s => s.kind === 'product');
+        
+        for (const slot of productSlots) {
+            const history = this.productRunner.slotHistory.get(slot.id);
+            if (history && history.state === 'paid') {
+                continue;
+            }
+            
+            if (!slot.isUnlocked(this.skillsStub)) {
+                this.solHUD.showLocked(slot.unlockRule, this.skillsStub);
+                return;
+            }
+        }
+        
+        this.productRunner.checkAndOfferJob();
     }
     
     updateSolHUDForLocation() {
@@ -308,6 +386,10 @@ class GameManager {
                 this.learnRunner.checkAndOfferJob();
             }
             
+            if (this.productRunner && locationId.toString() === this.productRunner.homeLocationId.toString()) {
+                this.updateHomeHUD();
+            }
+            
             if (this.freelanceSystem && locationId.toString() === this.freelanceSystem.cafeLocationId.toString()) {
                 this.freelanceSystem.checkAndOfferJob();
             }
@@ -357,6 +439,10 @@ class GameManager {
         
         if (this.learnRunner) {
             this.learnRunner.update(dt);
+        }
+        
+        if (this.productRunner) {
+            this.productRunner.update(dt);
         }
         
         this.checkDistrictTransition();
