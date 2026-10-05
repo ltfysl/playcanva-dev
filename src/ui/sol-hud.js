@@ -32,6 +32,12 @@ class SolHUD {
     }
     
     show(text, state) {
+        // Clear any pending flash/hide timeouts from previous states
+        if (this.payoutFlashTimeout) {
+            clearTimeout(this.payoutFlashTimeout);
+            this.payoutFlashTimeout = null;
+        }
+        
         this.currentState = state;
         this.element.textContent = text;
         this.element.style.opacity = '1';
@@ -118,6 +124,8 @@ class SolHUD {
     showLocked(unlockRule, skillsStub) {
         const currentXp = skillsStub ? skillsStub.getXp(unlockRule.skill) : 0;
         const text = `Locked — ${unlockRule.skill} XP ${currentXp}/${unlockRule.minXp}`;
+        
+        // show() will clear payoutFlashTimeout
         this.show(text, 'locked');
         
         if (this.lockedUpdateInterval) {
