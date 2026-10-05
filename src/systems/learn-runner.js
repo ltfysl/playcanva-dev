@@ -109,8 +109,7 @@ class LearnRunner {
                         this.currentRun.state = LearnJobState.IDLE;
                     }
                     if (this.currentRun && this.currentRun.state === LearnJobState.IN_PROGRESS) {
-                        this.completeJob();
-                        this.payoutJob();
+                        this.currentRun.state = LearnJobState.IDLE;
                     }
                 }
             }

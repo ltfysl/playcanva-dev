@@ -92,8 +92,7 @@ class CareerRunner {
                     this.currentRun.state = CareerJobState.IDLE;
                 }
                 if (this.currentRun && this.currentRun.state === CareerJobState.IN_PROGRESS) {
-                    this.completeJob();
-                    this.payoutJob();
+                    this.currentRun.state = CareerJobState.IDLE;
                 }
             }
         });

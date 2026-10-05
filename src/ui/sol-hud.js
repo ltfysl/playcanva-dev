@@ -52,11 +52,11 @@ class SolHUD {
     }
     
     showInProgress() {
-        this.show('Fixing…', 'inProgress');
+        this.show('Fixing… · E leave (no pay)', 'inProgress');
     }
     
     showCareerInProgress() {
-        this.show('Working…', 'inProgress');
+        this.show('Working… · E leave (no pay)', 'inProgress');
     }
     
     showPayout(amount, xp = null) {
@@ -80,17 +80,30 @@ class SolHUD {
         this.show(`E — ${jobName} (+${xpAmount} ${skillTag} XP)`, 'offered');
     }
     
-    showLearnInProgress(label = 'Practicing…') {
+    showLearnInProgress(label = 'Practicing… · E leave (no pay)') {
         this.show(label, 'inProgress');
     }
     
     showLearnInProgressFocusing() {
-        this.show('Focusing…', 'inProgress');
+        this.show('Focusing… · E leave (no pay)', 'inProgress');
     }
     
     showLearnPayout(xp) {
         let text = `+${xp.amount} ${xp.skill} XP`;
         this.show(text, 'payout');
+        
+        if (this.payoutFlashTimeout) {
+            clearTimeout(this.payoutFlashTimeout);
+        }
+        
+        this.payoutFlashTimeout = setTimeout(() => {
+            this.hide();
+            this.payoutFlashTimeout = null;
+        }, 1500);
+    }
+    
+    showAbandoned() {
+        this.show('Abandoned — no pay', 'abandoned');
         
         if (this.payoutFlashTimeout) {
             clearTimeout(this.payoutFlashTimeout);
