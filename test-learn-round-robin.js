@@ -1,6 +1,17 @@
-// Unit test for LearnRunner round-robin rotation
+// Unit test for LearnRunner round-robin rotation using REAL module
 // Run with: node test-learn-round-robin.js
 
+// Load real modules via shim
+const {
+    LocationId,
+    ActivitySlot,
+    LocationData,
+    CityModule,
+    LearnRunner,
+    UnlockState
+} = require('./test-shim.js');
+
+// Simple SkillsStub for testing
 class SkillsStub {
     constructor() {
         this.skills = {};
@@ -18,337 +29,8 @@ class SkillsStub {
     }
 }
 
-class LocationId {
-    constructor(districtId, buildingId) {
-        this.districtId = districtId;
-        this.buildingId = buildingId;
-    }
-    
-    toString() {
-        return `${this.districtId}:${this.buildingId}`;
-    }
-}
-
-class ActivitySlot {
-    constructor(id, config = {}) {
-        this.id = id;
-        this.name = config.name || id;
-        this.skillTags = config.skillTags || [];
-        this.unlockRule = config.unlockRule || null;
-        this.kind = config.kind || 'activity';
-        this.durationHint = config.durationHint || 60;
-        this.payoutStub = config.payoutStub || null;
-        this.xpStub = config.xpStub || null;
-    }
-    
-    isUnlocked(skillsStub = null) {
-        if (!this.unlockRule) return true;
-        if (!skillsStub) return false;
-        
-        const { skill, minXp } = this.unlockRule;
-        return skillsStub.getXp(skill) >= minXp;
-    }
-}
-
-class LocationData {
-    constructor(locationId, buildingKind, config = {}) {
-        this.locationId = locationId;
-        this.buildingKind = buildingKind;
-        this.activitySlots = config.activitySlots || [];
-    }
-    
-    getActivitySlots() {
-        return [...this.activitySlots];
-    }
-}
-
-class Presence {
-    constructor() {
-        this.currentLocation = null;
-        this.listeners = {
-            enter: [],
-            exit: []
-        };
-    }
-    
-    enter(locationId) {
-        this.currentLocation = locationId;
-        this.notifyListeners('enter', { location: locationId });
-    }
-    
-    exit(locationId) {
-        this.currentLocation = null;
-        this.notifyListeners('exit', { location: locationId });
-    }
-    
-    getCurrentLocation() {
-        return this.currentLocation;
-    }
-    
-    on(event, callback) {
-        if (this.listeners[event]) {
-            this.listeners[event].push(callback);
-        }
-    }
-    
-    notifyListeners(event, data) {
-        if (this.listeners[event]) {
-            this.listeners[event].forEach(callback => callback(data));
-        }
-    }
-}
-
-class CityModule {
-    constructor() {
-        this.locations = new Map();
-        this.presence = new Presence();
-    }
-    
-    registerLocation(locationData) {
-        const key = locationData.locationId.toString();
-        this.locations.set(key, locationData);
-    }
-    
-    getLocation(locationId) {
-        const key = typeof locationId === 'string' ? locationId : locationId.toString();
-        return this.locations.get(key);
-    }
-    
-    getPresence() {
-        return this.presence;
-    }
-    
-    getCurrentLocation() {
-        const currentLocId = this.presence.getCurrentLocation();
-        return currentLocId ? this.getLocation(currentLocId) : null;
-    }
-    
-    enterLocation(locationId) {
-        this.presence.enter(locationId);
-    }
-    
-    exitLocation(locationId) {
-        this.presence.exit(locationId);
-    }
-}
-
-const LearnJobState = {
-    IDLE: 'idle',
-    OFFERED: 'offered',
-    ACCEPTED: 'accepted',
-    IN_PROGRESS: 'inProgress',
-    COMPLETED: 'completed',
-    PAID: 'paid'
-};
-
-class LearnJobRun {
-    constructor(slotId) {
-        this.slotId = slotId;
-        this.state = LearnJobState.IDLE;
-        this.startTime = null;
-    }
-}
-
-class LearnRunner {
-    constructor(cityModule, homeLocationId, skillsStub) {
-        this.cityModule = cityModule;
-        this.homeLocationId = homeLocationId;
-        this.skillsStub = skillsStub;
-        this.currentRun = null;
-        this.lastPaidSlotIndexByLocation = new Map();
-        this.listeners = {
-            jobOffered: [],
-            jobAccepted: [],
-            jobStarted: [],
-            jobCompleted: [],
-            jobPaid: []
-        };
-        
-        this.setupPresenceListeners();
-    }
-    
-    getSlot(slotId) {
-        const currentLocation = this.cityModule.getCurrentLocation();
-        if (!currentLocation) return null;
-        
-        const slots = currentLocation.getActivitySlots();
-        return slots.find(s => s.id === slotId);
-    }
-    
-    getAvailableSlots() {
-        const currentLocation = this.cityModule.getCurrentLocation();
-        if (!currentLocation) return [];
-        
-        const slots = currentLocation.getActivitySlots();
-        return slots.filter(slot => {
-            if (slot.kind !== 'learn') return false;
-            
-            const isUnlocked = slot.isUnlocked(this.skillsStub);
-            return isUnlocked;
-        });
-    }
-    
-    getNextOfferable() {
-        const available = this.getAvailableSlots();
-        if (available.length === 0) return null;
-        
-        const currentLocation = this.cityModule.getCurrentLocation();
-        if (!currentLocation) return null;
-        
-        const locationKey = currentLocation.locationId.toString();
-        const lastPaidIndex = this.lastPaidSlotIndexByLocation.get(locationKey);
-        
-        if (lastPaidIndex === undefined) {
-            return available[0];
-        }
-        
-        const allSlots = currentLocation.getActivitySlots().filter(s => s.kind === 'learn');
-        const lastPaidSlotId = allSlots[lastPaidIndex]?.id;
-        
-        let nextIndex = (lastPaidIndex + 1) % allSlots.length;
-        let attempts = 0;
-        
-        while (attempts < allSlots.length) {
-            const candidateSlot = allSlots[nextIndex];
-            if (candidateSlot && candidateSlot.isUnlocked(this.skillsStub)) {
-                return candidateSlot;
-            }
-            nextIndex = (nextIndex + 1) % allSlots.length;
-            attempts++;
-        }
-        
-        return available[0];
-    }
-    
-    setupPresenceListeners() {
-        const presence = this.cityModule.getPresence();
-        
-        presence.on('enter', (data) => {
-            const location = this.cityModule.getLocation(data.location);
-            if (location) {
-                const hasLearnSlots = location.getActivitySlots().some(s => s.kind === 'learn');
-                if (hasLearnSlots) {
-                    this.checkAndOfferJob();
-                }
-            }
-        });
-        
-        presence.on('exit', (data) => {
-            const location = this.cityModule.getLocation(data.location);
-            if (location) {
-                const hasLearnSlots = location.getActivitySlots().some(s => s.kind === 'learn');
-                if (hasLearnSlots) {
-                    if (this.currentRun && this.currentRun.state === LearnJobState.OFFERED) {
-                        this.currentRun.state = LearnJobState.IDLE;
-                    }
-                    if (this.currentRun && this.currentRun.state === LearnJobState.IN_PROGRESS) {
-                        this.completeJob();
-                        this.payoutJob();
-                    }
-                }
-            }
-        });
-    }
-    
-    checkAndOfferJob() {
-        const currentLocation = this.cityModule.getCurrentLocation();
-        const isIdle = !this.currentRun || this.currentRun.state === LearnJobState.IDLE || this.currentRun.state === LearnJobState.PAID;
-        
-        if (!isIdle || !currentLocation) return;
-        
-        const hasLearnSlots = currentLocation.getActivitySlots().some(s => s.kind === 'learn');
-        if (!hasLearnSlots) return;
-        
-        const slot = this.getNextOfferable();
-        if (slot) {
-            this.currentRun = new LearnJobRun(slot.id);
-            this.currentRun.state = LearnJobState.OFFERED;
-            this.notifyListeners('jobOffered', { slotId: slot.id, slot });
-        }
-    }
-    
-    acceptJob() {
-        if (!this.currentRun || this.currentRun.state !== LearnJobState.OFFERED) return false;
-        
-        this.currentRun.state = LearnJobState.ACCEPTED;
-        const slot = this.getSlot(this.currentRun.slotId);
-        this.notifyListeners('jobAccepted', { slotId: this.currentRun.slotId, slot });
-        return true;
-    }
-    
-    startJob() {
-        if (!this.currentRun || this.currentRun.state !== LearnJobState.ACCEPTED) return false;
-        
-        this.currentRun.state = LearnJobState.IN_PROGRESS;
-        this.currentRun.startTime = Date.now();
-        const slot = this.getSlot(this.currentRun.slotId);
-        this.notifyListeners('jobStarted', { slotId: this.currentRun.slotId, slot });
-        return true;
-    }
-    
-    completeJob() {
-        if (!this.currentRun || this.currentRun.state !== LearnJobState.IN_PROGRESS) return false;
-        
-        this.currentRun.state = LearnJobState.COMPLETED;
-        const slot = this.getSlot(this.currentRun.slotId);
-        this.notifyListeners('jobCompleted', { slotId: this.currentRun.slotId, slot });
-        return true;
-    }
-    
-    payoutJob() {
-        if (!this.currentRun || this.currentRun.state !== LearnJobState.COMPLETED) return null;
-        
-        const slot = this.getSlot(this.currentRun.slotId);
-        if (!slot) return null;
-        
-        this.currentRun.state = LearnJobState.PAID;
-        
-        const xpStub = slot.xpStub;
-        const skillTag = slot.skillTags && slot.skillTags.length > 0 ? slot.skillTags[0] : null;
-        
-        let xp = null;
-        if (xpStub && xpStub.amount && skillTag && this.skillsStub) {
-            this.skillsStub.addXp(skillTag, xpStub.amount);
-            xp = { skill: skillTag, amount: xpStub.amount };
-        }
-        
-        const currentLocation = this.cityModule.getCurrentLocation();
-        if (currentLocation) {
-            const locationKey = currentLocation.locationId.toString();
-            const allSlots = currentLocation.getActivitySlots().filter(s => s.kind === 'learn');
-            const paidSlotIndex = allSlots.findIndex(s => s.id === this.currentRun.slotId);
-            if (paidSlotIndex !== -1) {
-                this.lastPaidSlotIndexByLocation.set(locationKey, paidSlotIndex);
-            }
-        }
-        
-        this.notifyListeners('jobPaid', { 
-            slotId: this.currentRun.slotId,
-            slot,
-            payout: null,
-            xp
-        });
-        
-        this.currentRun.state = LearnJobState.IDLE;
-        
-        return { payout: null, xp };
-    }
-    
-    on(event, callback) {
-        if (this.listeners[event]) {
-            this.listeners[event].push(callback);
-        }
-    }
-    
-    notifyListeners(event, data) {
-        if (this.listeners[event]) {
-            this.listeners[event].forEach(callback => callback(data));
-        }
-    }
-}
-
 // Test Suite
-console.log('=== LearnRunner Round-Robin Tests ===\n');
+console.log('=== LearnRunner Round-Robin Tests (Real Module) ===\n');
 
 let passed = 0;
 let failed = 0;
@@ -385,6 +67,7 @@ const homeSlots = [
 ];
 
 const homeLocation = new LocationData(homeLocationId, 'home', {
+    unlockState: UnlockState.OWNED,
     activitySlots: homeSlots
 });
 
@@ -464,6 +147,7 @@ const coworkSlots = [
 ];
 
 const coworkLocation = new LocationData(coworkLocationId, 'cowork', {
+    unlockState: UnlockState.OWNED,
     activitySlots: coworkSlots
 });
 
@@ -490,6 +174,123 @@ console.log('Test 6: Locations have independent rotation state');
 cityModule.exitLocation(coworkLocationId);
 cityModule.enterLocation(homeLocationId);
 assert(learnRunner.currentRun.slotId === 'home-design-1', 'Home offers design (its next in rotation)');
+console.log();
+
+// Test 7a: Inserting a new learn slot before the last-paid one still offers the slot after the last-paid id
+console.log('Test 7a: Insert slot before last-paid ID → still offers slot after last-paid ID');
+// Current state: home last paid = home-practice-1 (from test 4), next should be home-design-1
+// Insert a new slot before home-practice-1
+const homeWithNewSlot = new LocationData(homeLocationId, 'home', {
+    unlockState: UnlockState.OWNED,
+    activitySlots: [
+        new ActivitySlot('home-research-1', {
+            name: 'Research topics',
+            skillTags: ['research'],
+            unlockRule: null,
+            kind: 'learn',
+            xpStub: { amount: 5 }
+        }),
+        new ActivitySlot('home-practice-1', {
+            name: 'Practice coding',
+            skillTags: ['coding'],
+            unlockRule: null,
+            durationHint: 20,
+            kind: 'learn',
+            xpStub: { amount: 5 }
+        }),
+        new ActivitySlot('home-design-1', {
+            name: 'Practice design',
+            skillTags: ['design'],
+            unlockRule: null,
+            durationHint: 20,
+            kind: 'learn',
+            xpStub: { amount: 5 }
+        })
+    ]
+});
+cityModule.registerLocation(homeWithNewSlot);
+cityModule.exitLocation(homeLocationId);
+cityModule.enterLocation(homeLocationId);
+assert(learnRunner.currentRun.slotId === 'home-design-1', 'Still offers design (next after home-practice-1 by ID)');
+console.log();
+
+// Test 7b: Removed last-paid id falls back to index 0
+console.log('Test 7b: Last-paid ID removed → falls back to index 0');
+// Pay the design slot first
+learnRunner.acceptJob();
+learnRunner.startJob();
+learnRunner.completeJob();
+learnRunner.payoutJob();
+// Now register location without the last-paid slot (home-design-1 was paid)
+const homeAfterRemoval = new LocationData(homeLocationId, 'home', {
+    unlockState: UnlockState.OWNED,
+    activitySlots: [
+        new ActivitySlot('home-research-1', {
+            name: 'Research topics',
+            skillTags: ['research'],
+            unlockRule: null,
+            kind: 'learn',
+            xpStub: { amount: 5 }
+        }),
+        new ActivitySlot('home-writing-1', {
+            name: 'Practice writing',
+            skillTags: ['writing'],
+            unlockRule: null,
+            kind: 'learn',
+            xpStub: { amount: 5 }
+        })
+    ]
+});
+cityModule.registerLocation(homeAfterRemoval);
+cityModule.exitLocation(homeLocationId);
+cityModule.enterLocation(homeLocationId);
+assert(learnRunner.currentRun.slotId === 'home-research-1', 'Falls back to index 0 when last-paid ID missing');
+console.log();
+
+// Test 7c: Explicit coding->design->coding wrap test
+console.log('Test 7c: Coding→Design→Coding wrap cycle');
+// Reset to original home location
+const originalHome = new LocationData(homeLocationId, 'home', {
+    unlockState: UnlockState.OWNED,
+    activitySlots: [
+        new ActivitySlot('home-practice-1', {
+            name: 'Practice coding',
+            skillTags: ['coding'],
+            unlockRule: null,
+            durationHint: 20,
+            kind: 'learn',
+            xpStub: { amount: 5 }
+        }),
+        new ActivitySlot('home-design-1', {
+            name: 'Practice design',
+            skillTags: ['design'],
+            unlockRule: null,
+            durationHint: 20,
+            kind: 'learn',
+            xpStub: { amount: 5 }
+        })
+    ]
+});
+cityModule.registerLocation(originalHome);
+// Clear rotation state for fresh test
+const runner2 = new LearnRunner(cityModule, homeLocationId, skillsStub);
+cityModule.exitLocation(homeLocationId);
+cityModule.enterLocation(homeLocationId);
+assert(runner2.currentRun.slotId === 'home-practice-1', 'Wrap test: First offer is coding');
+runner2.acceptJob();
+runner2.startJob();
+runner2.completeJob();
+runner2.payoutJob();
+cityModule.exitLocation(homeLocationId);
+cityModule.enterLocation(homeLocationId);
+assert(runner2.currentRun.slotId === 'home-design-1', 'Wrap test: Second offer is design');
+runner2.acceptJob();
+runner2.startJob();
+runner2.completeJob();
+runner2.payoutJob();
+cityModule.exitLocation(homeLocationId);
+cityModule.enterLocation(homeLocationId);
+assert(runner2.currentRun.slotId === 'home-practice-1', 'Wrap test: Third offer wraps back to coding');
 console.log();
 
 // Summary
