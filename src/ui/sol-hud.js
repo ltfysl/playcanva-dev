@@ -102,6 +102,19 @@ class SolHUD {
         }, 1500);
     }
     
+    showAbandoned() {
+        this.show('Abandoned — no pay', 'abandoned');
+        
+        if (this.payoutFlashTimeout) {
+            clearTimeout(this.payoutFlashTimeout);
+        }
+        
+        this.payoutFlashTimeout = setTimeout(() => {
+            this.hide();
+            this.payoutFlashTimeout = null;
+        }, 1500);
+    }
+    
     showLocked(unlockRule, skillsStub) {
         const currentXp = skillsStub ? skillsStub.getXp(unlockRule.skill) : 0;
         const text = `Locked — ${unlockRule.skill} XP ${currentXp}/${unlockRule.minXp}`;

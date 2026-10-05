@@ -144,7 +144,12 @@ class GameManager {
                 
                 this.cityModule.getPresence().on('exit', (data) => {
                     if (data.location.toString() === this.freelanceSystem.cafeLocationId.toString()) {
-                        this.solHUD.hide();
+                        const currentRun = this.freelanceSystem.getCurrentRun();
+                        if (currentRun && currentRun.state === 'inProgress') {
+                            this.solHUD.showAbandoned();
+                        } else {
+                            this.solHUD.hide();
+                        }
                     }
                 });
             } else {
@@ -195,7 +200,12 @@ class GameManager {
                     if (location) {
                         const hasLearnSlots = location.getActivitySlots().some(s => s.kind === 'learn');
                         if (hasLearnSlots) {
-                            this.solHUD.hide();
+                            const currentRun = this.learnRunner.getCurrentRun();
+                            if (currentRun && currentRun.state === 'inProgress') {
+                                this.solHUD.showAbandoned();
+                            } else {
+                                this.solHUD.hide();
+                            }
                         }
                     }
                 });
@@ -244,7 +254,12 @@ class GameManager {
                 
                 this.cityModule.getPresence().on('exit', (data) => {
                     if (data.location.toString() === this.careerRunner.officeLocationId.toString()) {
-                        this.solHUD.hide();
+                        const currentRun = this.careerRunner.getCurrentRun();
+                        if (currentRun && currentRun.state === 'inProgress') {
+                            this.solHUD.showAbandoned();
+                        } else {
+                            this.solHUD.hide();
+                        }
                     }
                 });
             } else {

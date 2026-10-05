@@ -302,7 +302,7 @@ console.log('Test 4: CareerRunner - Complete timer awards XP and cash');
 }
 console.log();
 
-console.log('Test 5: FreelanceSystem - Exit during inProgress leaves job abandoned (regression)');
+console.log('Test 5: FreelanceSystem - Exit during inProgress abandons job');
 {
     const skillsStub = new SkillsStub();
     const cityModule = new CityModule();
@@ -338,12 +338,163 @@ console.log('Test 5: FreelanceSystem - Exit during inProgress leaves job abandon
     freelanceSystem.startJob();
     assert(freelanceSystem.getCurrentRun().state === JobState.IN_PROGRESS, '5b: Job started');
     
+    const initialXp = skillsStub.getXp('coding');
+    const initialCash = freelanceSystem.getCashBalance();
+    
     presence.exit(cafeId);
-    assert(freelanceSystem.getCurrentRun().state === JobState.IN_PROGRESS, '5c: Job still IN_PROGRESS after exit (no auto-complete)');
+    assert(freelanceSystem.getCurrentRun().state === JobState.IDLE, '5c: Job abandoned on exit (state is IDLE)');
+    assert(skillsStub.getXp('coding') === initialXp, '5d: No XP awarded on abandon', `Expected ${initialXp}, got ${skillsStub.getXp('coding')}`);
+    assert(freelanceSystem.getCashBalance() === initialCash, '5e: No cash awarded on abandon', `Expected ${initialCash}, got ${freelanceSystem.getCashBalance()}`);
 }
 console.log();
 
-console.log('Test 6: FreelanceSystem - Manual complete and payout still works');
+console.log('Test 6: LearnRunner - Tick past duration after abandon → still 0 payout');
+{
+    const skillsStub = new SkillsStub();
+    const cityModule = new CityModule();
+    
+    const homeId = new LocationId(BuildingKind.HOME, 0);
+    const homeLocation = new LocationData(
+        homeId,
+        'Home',
+        new pc.Vec3(0, 0, 0),
+        BuildingKind.HOME,
+        UnlockState.UNLOCKED
+    );
+    homeLocation.activitySlots = [
+        new ActivitySlot('home-practice-coding', {
+            name: 'Practice coding',
+            skillTags: ['coding'],
+            unlockRule: null,
+            durationHint: 0.1,
+            kind: 'learn',
+            payoutStub: null,
+            xpStub: { amount: 5 }
+        })
+    ];
+    cityModule.locations.set(homeId.toString(), homeLocation);
+    
+    const learnRunner = new LearnRunner(cityModule, homeId, skillsStub);
+    const presence = cityModule.getPresence();
+    
+    presence.enter(homeId);
+    learnRunner.acceptJob();
+    learnRunner.startJob();
+    
+    const initialXp = skillsStub.getXp('coding');
+    
+    presence.exit(homeId);
+    assert(learnRunner.getCurrentRun().state === LearnJobState.IDLE, '6a: Job abandoned');
+    
+    for (let i = 0; i < 10; i++) {
+        learnRunner.update(0.05);
+    }
+    
+    assert(learnRunner.getCurrentRun().state === LearnJobState.IDLE, '6b: Still IDLE after ticking past duration');
+    assert(skillsStub.getXp('coding') === initialXp, '6c: Still 0 XP after ticking past duration', `Expected ${initialXp}, got ${skillsStub.getXp('coding')}`);
+}
+console.log();
+
+console.log('Test 7: CareerRunner - Tick past duration after abandon → still 0 payout');
+{
+    const skillsStub = new SkillsStub();
+    skillsStub.addXp('coding', 15);
+    const cityModule = new CityModule();
+    
+    const officeId = new LocationId(BuildingKind.OFFICE, 0);
+    const officeLocation = new LocationData(
+        officeId,
+        'Office',
+        new pc.Vec3(0, 0, 0),
+        BuildingKind.OFFICE,
+        UnlockState.UNLOCKED
+    );
+    officeLocation.activitySlots = [
+        new ActivitySlot('office-ticket-1', {
+            name: 'Fix production ticket',
+            skillTags: ['coding'],
+            unlockRule: { skill: 'coding', minXp: 15 },
+            durationHint: 0.1,
+            kind: 'career',
+            payoutStub: { currency: 'cash', amount: 120 },
+            xpStub: { amount: 20 }
+        })
+    ];
+    cityModule.locations.set(officeId.toString(), officeLocation);
+    
+    const careerRunner = new CareerRunner(cityModule, officeId, skillsStub);
+    const presence = cityModule.getPresence();
+    
+    presence.enter(officeId);
+    careerRunner.acceptJob();
+    careerRunner.startJob();
+    
+    const initialXp = skillsStub.getXp('coding');
+    const initialCash = careerRunner.getCashBalance();
+    
+    presence.exit(officeId);
+    assert(careerRunner.getCurrentRun().state === CareerJobState.IDLE, '7a: Job abandoned');
+    
+    for (let i = 0; i < 10; i++) {
+        careerRunner.update(0.05);
+    }
+    
+    assert(careerRunner.getCurrentRun().state === CareerJobState.IDLE, '7b: Still IDLE after ticking past duration');
+    assert(skillsStub.getXp('coding') === initialXp, '7c: Still 0 XP after ticking past duration', `Expected ${initialXp}, got ${skillsStub.getXp('coding')}`);
+    assert(careerRunner.getCashBalance() === initialCash, '7d: Still 0 cash after ticking past duration', `Expected ${initialCash}, got ${careerRunner.getCashBalance()}`);
+}
+console.log();
+
+console.log('Test 8: FreelanceSystem - Tick past duration after abandon → still 0 payout');
+{
+    const skillsStub = new SkillsStub();
+    const cityModule = new CityModule();
+    
+    const cafeId = new LocationId(BuildingKind.CAFE, 0);
+    const cafeLocation = new LocationData(
+        cafeId,
+        'Cafe',
+        new pc.Vec3(0, 0, 0),
+        BuildingKind.CAFE,
+        UnlockState.UNLOCKED
+    );
+    cafeLocation.activitySlots = [
+        new ActivitySlot('cafe-bugfix-1', {
+            name: 'Quick bugfix',
+            skillTags: ['coding'],
+            unlockRule: null,
+            durationHint: 0.1,
+            kind: 'freelance',
+            payoutStub: { currency: 'cash', amount: 50 },
+            xpStub: { amount: 10 }
+        })
+    ];
+    cityModule.locations.set(cafeId.toString(), cafeLocation);
+    
+    const freelanceSystem = new FreelanceSystem(cityModule, cafeId, skillsStub);
+    const presence = cityModule.getPresence();
+    
+    presence.enter(cafeId);
+    freelanceSystem.acceptJob();
+    freelanceSystem.startJob();
+    
+    const initialXp = skillsStub.getXp('coding');
+    const initialCash = freelanceSystem.getCashBalance();
+    
+    presence.exit(cafeId);
+    assert(freelanceSystem.getCurrentRun().state === JobState.IDLE, '8a: Job abandoned');
+    
+    for (let i = 0; i < 10; i++) {
+        freelanceSystem.update(0.05);
+    }
+    
+    assert(freelanceSystem.getCurrentRun().state === JobState.IDLE, '8b: Still IDLE after ticking past duration');
+    assert(skillsStub.getXp('coding') === initialXp, '8c: Still 0 XP after ticking past duration', `Expected ${initialXp}, got ${skillsStub.getXp('coding')}`);
+    assert(freelanceSystem.getCashBalance() === initialCash, '8d: Still 0 cash after ticking past duration', `Expected ${initialCash}, got ${freelanceSystem.getCashBalance()}`);
+}
+console.log();
+
+console.log('Test 9: FreelanceSystem - Manual complete and payout still works');
 {
     const skillsStub = new SkillsStub();
     const cityModule = new CityModule();
@@ -382,12 +533,12 @@ console.log('Test 6: FreelanceSystem - Manual complete and payout still works');
     freelanceSystem.completeJob();
     const result = freelanceSystem.payoutJob();
     
-    assert(result !== null, '6a: Payout returned result');
-    assert(result.xp !== null, '6b: XP was awarded');
-    assert(result.xp.amount === 10, '6c: Correct XP amount', `Expected 10, got ${result.xp.amount}`);
-    assert(skillsStub.getXp('coding') === initialXp + 10, '6d: XP added to skills', `Expected ${initialXp + 10}, got ${skillsStub.getXp('coding')}`);
-    assert(result.payout.amount === 50, '6e: Correct cash amount', `Expected 50, got ${result.payout.amount}`);
-    assert(freelanceSystem.getCashBalance() === initialCash + 50, '6f: Cash added to balance', `Expected ${initialCash + 50}, got ${freelanceSystem.getCashBalance()}`);
+    assert(result !== null, '9a: Payout returned result');
+    assert(result.xp !== null, '9b: XP was awarded');
+    assert(result.xp.amount === 10, '9c: Correct XP amount', `Expected 10, got ${result.xp.amount}`);
+    assert(skillsStub.getXp('coding') === initialXp + 10, '9d: XP added to skills', `Expected ${initialXp + 10}, got ${skillsStub.getXp('coding')}`);
+    assert(result.payout.amount === 50, '9e: Correct cash amount', `Expected 50, got ${result.payout.amount}`);
+    assert(freelanceSystem.getCashBalance() === initialCash + 50, '9f: Cash added to balance', `Expected ${initialCash + 50}, got ${freelanceSystem.getCashBalance()}`);
 }
 console.log();
 

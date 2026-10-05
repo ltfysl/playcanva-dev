@@ -91,6 +91,9 @@ class FreelanceSystem {
                 if (this.currentRun && this.currentRun.state === JobState.OFFERED) {
                     this.currentRun.state = JobState.IDLE;
                 }
+                if (this.currentRun && this.currentRun.state === JobState.IN_PROGRESS) {
+                    this.currentRun.state = JobState.IDLE;
+                }
             }
         });
     }
