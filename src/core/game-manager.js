@@ -503,16 +503,23 @@ class GameManager {
         if (!this.player) return;
         
         const playerPos = this.player.getPosition();
-        let nearbyInfo = 'No buildings nearby';
+        let nearbyInfo = `Buildings: ${this.buildings.length}\n`;
         let nearestDist = 999;
         let nearestBuilding = null;
         
         for (const building of this.buildings) {
-            if (!building.doorPosition) continue;
+            if (!building.doorPosition) {
+                nearbyInfo += `${building.kind}: no door\n`;
+                continue;
+            }
             
             const dx = playerPos.x - building.doorPosition.x;
             const dz = playerPos.z - building.doorPosition.z;
             const dist = Math.sqrt(dx * dx + dz * dz);
+            
+            if (dist < 30) {
+                nearbyInfo += `${building.kind}: ${dist.toFixed(1)}m\n`;
+            }
             
             if (dist < nearestDist) {
                 nearestDist = dist;
@@ -520,18 +527,18 @@ class GameManager {
             }
         }
         
-        if (nearestBuilding && nearestDist < 10) {
+        if (nearestBuilding && nearestDist < 30) {
             const locationId = new LocationId(nearestBuilding.districtId, nearestBuilding.id);
             const location = this.cityModule.getLocation(locationId);
             const canEnter = location ? location.canEnter() : false;
             const hasInterior = nearestBuilding.interior != null;
             const inRange = nearestDist < GameConfig.player.interactionDistance;
             
-            nearbyInfo = `Building: ${nearestBuilding.kind}\n` +
-                        `Distance: ${nearestDist.toFixed(2)}m\n` +
-                        `Can Enter: ${canEnter}\n` +
-                        `Has Interior: ${hasInterior}\n` +
-                        `In Range (< 3m): ${inRange ? 'YES - Press E' : 'NO'}`;
+            nearbyInfo += `\nNearest: ${nearestBuilding.kind}\n` +
+                         `Distance: ${nearestDist.toFixed(2)}m\n` +
+                         `Can Enter: ${canEnter}\n` +
+                         `Has Interior: ${hasInterior}\n` +
+                         `In Range (< 3m): ${inRange ? 'YES - Press E' : 'NO'}`;
         }
         
         this.debugHud.innerHTML = `<pre>${nearbyInfo}\n\nPlayer: ${playerPos.x.toFixed(1)}, ${playerPos.y.toFixed(1)}, ${playerPos.z.toFixed(1)}</pre>`;
