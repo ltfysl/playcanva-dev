@@ -93,6 +93,12 @@ class GameManager {
     setupLighting() {
         this.lightingSystem = new LightingSystem(this.app);
         this.lightingSystem.initialize();
+        
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has('daytime')) {
+            this.lightingSystem.setTimeOfDay(0.25);
+            console.log('Forced daytime mode (URL param: ?daytime)');
+        }
     }
     
     setupUI() {
