@@ -141,17 +141,6 @@ class GameManager {
                         this.updateSolHUDForLocation();
                     }
                 });
-                
-                this.cityModule.getPresence().on('exit', (data) => {
-                    if (data.location.toString() === this.freelanceSystem.cafeLocationId.toString()) {
-                        const currentRun = this.freelanceSystem.getCurrentRun();
-                        if (currentRun && currentRun.state === 'inProgress') {
-                            this.solHUD.showAbandoned();
-                        } else {
-                            this.solHUD.hide();
-                        }
-                    }
-                });
             } else {
                 setTimeout(checkFreelanceSystem, 100);
             }
@@ -194,21 +183,6 @@ class GameManager {
                         this.learnRunner.checkAndOfferJob();
                     }, 1600);
                 });
-                
-                this.cityModule.getPresence().on('exit', (data) => {
-                    const location = this.cityModule.getLocation(data.location);
-                    if (location) {
-                        const hasLearnSlots = location.getActivitySlots().some(s => s.kind === 'learn');
-                        if (hasLearnSlots) {
-                            const currentRun = this.learnRunner.getCurrentRun();
-                            if (currentRun && currentRun.state === 'inProgress') {
-                                this.solHUD.showAbandoned();
-                            } else {
-                                this.solHUD.hide();
-                            }
-                        }
-                    }
-                });
             } else {
                 setTimeout(checkLearnRunner, 100);
             }
@@ -249,17 +223,6 @@ class GameManager {
                 this.cityModule.getPresence().on('enter', (data) => {
                     if (data.location.toString() === this.careerRunner.officeLocationId.toString()) {
                         this.careerRunner.checkAndOfferJob();
-                    }
-                });
-                
-                this.cityModule.getPresence().on('exit', (data) => {
-                    if (data.location.toString() === this.careerRunner.officeLocationId.toString()) {
-                        const currentRun = this.careerRunner.getCurrentRun();
-                        if (currentRun && currentRun.state === 'inProgress') {
-                            this.solHUD.showAbandoned();
-                        } else {
-                            this.solHUD.hide();
-                        }
                     }
                 });
             } else {
@@ -341,12 +304,6 @@ class GameManager {
             
             if (hudState === 'offered' && currentRun.state === 'offered') {
                 runner.acceptJob();
-                return true;
-            }
-            
-            if (hudState === 'inProgress' && currentRun.state === 'inProgress') {
-                runner.completeJob();
-                runner.payoutJob();
                 return true;
             }
         }
@@ -434,9 +391,45 @@ class GameManager {
         
         console.log('Exiting building');
         
-        if (this.cityModule) {
+        if (this.cityModule && this.solHUD) {
             const locationId = new LocationId(this.currentBuilding.districtId, this.currentBuilding.id);
-            this.cityModule.exitLocation(locationId);
+            const location = this.cityModule.getLocation(locationId);
+            
+            if (location) {
+                let shouldShowAbandoned = false;
+                
+                const hasLearnSlots = location.getActivitySlots().some(s => s.kind === 'learn');
+                if (hasLearnSlots && this.learnRunner) {
+                    const currentRun = this.learnRunner.getCurrentRun();
+                    if (currentRun && currentRun.state === 'inProgress') {
+                        shouldShowAbandoned = true;
+                    }
+                }
+                
+                if (this.freelanceSystem && locationId.toString() === this.freelanceSystem.cafeLocationId.toString()) {
+                    const currentRun = this.freelanceSystem.getCurrentRun();
+                    if (currentRun && currentRun.state === 'inProgress') {
+                        shouldShowAbandoned = true;
+                    }
+                }
+                
+                if (this.careerRunner && locationId.toString() === this.careerRunner.officeLocationId.toString()) {
+                    const currentRun = this.careerRunner.getCurrentRun();
+                    if (currentRun && currentRun.state === 'inProgress') {
+                        shouldShowAbandoned = true;
+                    }
+                }
+                
+                this.cityModule.exitLocation(locationId);
+                
+                if (shouldShowAbandoned) {
+                    this.solHUD.showAbandoned();
+                } else {
+                    this.solHUD.hide();
+                }
+            } else {
+                this.cityModule.exitLocation(locationId);
+            }
         }
         
         this.currentBuilding.exit(this.player);

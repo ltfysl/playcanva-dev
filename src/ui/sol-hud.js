@@ -52,11 +52,11 @@ class SolHUD {
     }
     
     showInProgress() {
-        this.show('Fixing…', 'inProgress');
+        this.show('Fixing… · E leave (no pay)', 'inProgress');
     }
     
     showCareerInProgress() {
-        this.show('Working…', 'inProgress');
+        this.show('Working… · E leave (no pay)', 'inProgress');
     }
     
     showPayout(amount, xp = null) {
@@ -80,12 +80,12 @@ class SolHUD {
         this.show(`E — ${jobName} (+${xpAmount} ${skillTag} XP)`, 'offered');
     }
     
-    showLearnInProgress(label = 'Practicing…') {
+    showLearnInProgress(label = 'Practicing… · E leave (no pay)') {
         this.show(label, 'inProgress');
     }
     
     showLearnInProgressFocusing() {
-        this.show('Focusing…', 'inProgress');
+        this.show('Focusing… · E leave (no pay)', 'inProgress');
     }
     
     showLearnPayout(xp) {
