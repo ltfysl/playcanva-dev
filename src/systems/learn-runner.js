@@ -30,6 +30,7 @@ class LearnRunner {
         this.homeLocationId = homeLocationId;
         this.skillsStub = skillsStub;
         this.currentRun = null;
+        this.lastPaidSlotIndexByLocation = new Map();
         this.listeners = {
             jobOffered: [],
             jobAccepted: [],
@@ -64,7 +65,34 @@ class LearnRunner {
     
     getNextOfferable() {
         const available = this.getAvailableSlots();
-        return available.length > 0 ? available[0] : null;
+        if (available.length === 0) return null;
+        
+        const currentLocation = this.cityModule.getCurrentLocation();
+        if (!currentLocation) return null;
+        
+        const locationKey = currentLocation.locationId.toString();
+        const lastPaidIndex = this.lastPaidSlotIndexByLocation.get(locationKey);
+        
+        if (lastPaidIndex === undefined) {
+            return available[0];
+        }
+        
+        const allSlots = currentLocation.getActivitySlots().filter(s => s.kind === 'learn');
+        const lastPaidSlotId = allSlots[lastPaidIndex]?.id;
+        
+        let nextIndex = (lastPaidIndex + 1) % allSlots.length;
+        let attempts = 0;
+        
+        while (attempts < allSlots.length) {
+            const candidateSlot = allSlots[nextIndex];
+            if (candidateSlot && candidateSlot.isUnlocked(this.skillsStub)) {
+                return candidateSlot;
+            }
+            nextIndex = (nextIndex + 1) % allSlots.length;
+            attempts++;
+        }
+        
+        return available[0];
     }
     
     setupPresenceListeners() {
@@ -157,6 +185,16 @@ class LearnRunner {
         if (xpStub && xpStub.amount && skillTag && this.skillsStub) {
             this.skillsStub.addXp(skillTag, xpStub.amount);
             xp = { skill: skillTag, amount: xpStub.amount };
+        }
+        
+        const currentLocation = this.cityModule.getCurrentLocation();
+        if (currentLocation) {
+            const locationKey = currentLocation.locationId.toString();
+            const allSlots = currentLocation.getActivitySlots().filter(s => s.kind === 'learn');
+            const paidSlotIndex = allSlots.findIndex(s => s.id === this.currentRun.slotId);
+            if (paidSlotIndex !== -1) {
+                this.lastPaidSlotIndexByLocation.set(locationKey, paidSlotIndex);
+            }
         }
         
         this.notifyListeners('jobPaid', { 
