@@ -63,18 +63,27 @@ class FreelanceSystem {
             const isUnlocked = slot.isUnlocked(this.skillsStub);
             if (!isUnlocked) return false;
             
-            const history = this.slotHistory.get(slot.id);
-            if (!history || history.state !== JobState.PAID) {
-                return true;
+            // cafe-bugfix-1 is repeatable; cafe-feature-1 is one-shot
+            if (slot.id === 'cafe-feature-1') {
+                const history = this.slotHistory.get(slot.id);
+                if (history && history.state === JobState.PAID) {
+                    return false;
+                }
             }
             
-            return false;
+            return true;
         });
     }
     
     getNextOfferable() {
         const available = this.getAvailableSlots();
-        return available.length > 0 ? available[0] : null;
+        if (available.length === 0) return null;
+        
+        // Prioritize cafe-feature-1 when unlocked
+        const featureGig = available.find(s => s.id === 'cafe-feature-1');
+        if (featureGig) return featureGig;
+        
+        return available[0];
     }
     
     setupPresenceListeners() {
@@ -105,16 +114,30 @@ class FreelanceSystem {
         
         if (!isIdle || !isAtLocation) return;
         
+        // Check if cafe-feature-1 is locked (but not paid)
+        const nextLockedSlot = this.getNextLockedSlot();
+        if (nextLockedSlot && nextLockedSlot.id === 'cafe-feature-1') {
+            // Show locked chip for 2s, then offer next available gig
+            this.notifyListeners('jobLocked', { slot: nextLockedSlot });
+            
+            setTimeout(() => {
+                if (!this.currentRun || this.currentRun.state === JobState.IDLE || this.currentRun.state === JobState.PAID) {
+                    const slot = this.getNextOfferable();
+                    if (slot) {
+                        this.currentRun = new JobRun(slot.id);
+                        this.currentRun.state = JobState.OFFERED;
+                        this.notifyListeners('jobOffered', { slotId: slot.id, slot });
+                    }
+                }
+            }, 2000);
+            return;
+        }
+        
         const slot = this.getNextOfferable();
         if (slot) {
             this.currentRun = new JobRun(slot.id);
             this.currentRun.state = JobState.OFFERED;
             this.notifyListeners('jobOffered', { slotId: slot.id, slot });
-        } else {
-            const nextLockedSlot = this.getNextLockedSlot();
-            if (nextLockedSlot) {
-                this.notifyListeners('jobLocked', { slot: nextLockedSlot });
-            }
         }
     }
     
@@ -126,9 +149,12 @@ class FreelanceSystem {
         for (const slot of slots) {
             if (slot.kind !== 'freelance') continue;
             
-            const history = this.slotHistory.get(slot.id);
-            if (history && history.state === JobState.PAID) {
-                continue;
+            // Don't show cafe-feature-1 as locked if it's already been paid
+            if (slot.id === 'cafe-feature-1') {
+                const history = this.slotHistory.get(slot.id);
+                if (history && history.state === JobState.PAID) {
+                    continue;
+                }
             }
             
             if (!slot.isUnlocked(this.skillsStub)) {
@@ -201,6 +227,9 @@ class FreelanceSystem {
             xp,
             newBalance: this.cashBalance 
         });
+        
+        // After payout, reset to IDLE so next gig can be offered
+        this.currentRun.state = JobState.IDLE;
         
         return { payout, xp };
     }

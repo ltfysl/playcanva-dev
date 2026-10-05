@@ -93,13 +93,6 @@ class GameManager {
     setupLighting() {
         this.lightingSystem = new LightingSystem(this.app);
         this.lightingSystem.initialize();
-        
-        const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.has('daytime')) {
-            this.lightingSystem.setTimeOfDay(0.25);
-            this.lightingSystem.frozen = true;
-            console.log('Forced daytime mode (URL param: ?daytime) - day/night cycle frozen');
-        }
     }
     
     setupUI() {
@@ -108,20 +101,6 @@ class GameManager {
         this.setupFreelanceListeners();
         this.setupLearnListeners();
         this.setupCareerListeners();
-        
-        const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.has('debug')) {
-            this.setupDebugHUD();
-        }
-    }
-    
-    setupDebugHUD() {
-        const debugHud = document.createElement('div');
-        debugHud.id = 'debug-hud';
-        debugHud.style.cssText = 'position:fixed;top:10px;left:10px;background:rgba(0,0,0,0.8);color:#0f0;padding:10px;font-family:monospace;font-size:14px;z-index:9999;border:2px solid #0f0;';
-        document.body.appendChild(debugHud);
-        this.debugHud = debugHud;
-        console.log('Debug HUD enabled (URL param: ?debug)');
     }
     
     setupFreelanceListeners() {
@@ -472,7 +451,7 @@ class GameManager {
             this.player.update(dt);
         }
         
-        if (this.lightingSystem && !this.lightingSystem.frozen) {
+        if (this.lightingSystem) {
             this.lightingSystem.update(dt);
         }
         
@@ -492,56 +471,7 @@ class GameManager {
             this.careerRunner.update(dt);
         }
         
-        if (this.debugHud) {
-            this.updateDebugHUD();
-        }
-        
         this.checkDistrictTransition();
-    }
-    
-    updateDebugHUD() {
-        if (!this.player) return;
-        
-        const playerPos = this.player.getPosition();
-        let nearbyInfo = `Buildings: ${this.buildings.length}\n`;
-        let nearestDist = 999;
-        let nearestBuilding = null;
-        
-        for (const building of this.buildings) {
-            if (!building.doorPosition) {
-                nearbyInfo += `${building.kind}: no door\n`;
-                continue;
-            }
-            
-            const dx = playerPos.x - building.doorPosition.x;
-            const dz = playerPos.z - building.doorPosition.z;
-            const dist = Math.sqrt(dx * dx + dz * dz);
-            
-            if (dist < 30) {
-                nearbyInfo += `${building.kind}: ${dist.toFixed(1)}m\n`;
-            }
-            
-            if (dist < nearestDist) {
-                nearestDist = dist;
-                nearestBuilding = building;
-            }
-        }
-        
-        if (nearestBuilding && nearestDist < 30) {
-            const locationId = new LocationId(nearestBuilding.districtId, nearestBuilding.id);
-            const location = this.cityModule.getLocation(locationId);
-            const canEnter = location ? location.canEnter() : false;
-            const hasInterior = nearestBuilding.interior != null;
-            const inRange = nearestDist < GameConfig.player.interactionDistance;
-            
-            nearbyInfo += `\nNearest: ${nearestBuilding.kind}\n` +
-                         `Distance: ${nearestDist.toFixed(2)}m\n` +
-                         `Can Enter: ${canEnter}\n` +
-                         `Has Interior: ${hasInterior}\n` +
-                         `In Range (< 3m): ${inRange ? 'YES - Press E' : 'NO'}`;
-        }
-        
-        this.debugHud.innerHTML = `<pre>${nearbyInfo}\n\nPlayer: ${playerPos.x.toFixed(1)}, ${playerPos.y.toFixed(1)}, ${playerPos.z.toFixed(1)}</pre>`;
     }
     
     checkDistrictTransition() {
