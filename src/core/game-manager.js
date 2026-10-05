@@ -508,7 +508,12 @@ class GameManager {
         let nearestBuilding = null;
         
         for (const building of this.buildings) {
-            const dist = building.getDistanceToPlayer(playerPos);
+            if (!building.doorPosition) continue;
+            
+            const dx = playerPos.x - building.doorPosition.x;
+            const dz = playerPos.z - building.doorPosition.z;
+            const dist = Math.sqrt(dx * dx + dz * dz);
+            
             if (dist < nearestDist) {
                 nearestDist = dist;
                 nearestBuilding = building;
