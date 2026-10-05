@@ -32,6 +32,7 @@ class FreelanceSystem {
         this.currentRun = null;
         this.cashBalance = 0;
         this.slotHistory = new Map();
+        this.lockedChipTimeout = null;
         this.listeners = {
             jobOffered: [],
             jobAccepted: [],
@@ -63,8 +64,8 @@ class FreelanceSystem {
             const isUnlocked = slot.isUnlocked(this.skillsStub);
             if (!isUnlocked) return false;
             
-            // cafe-bugfix-1 is repeatable; cafe-feature-1 is one-shot
-            if (slot.id === 'cafe-feature-1') {
+            // One-shot slots (repeatable=false) are excluded after being paid
+            if (!slot.repeatable) {
                 const history = this.slotHistory.get(slot.id);
                 if (history && history.state === JobState.PAID) {
                     return false;
@@ -79,9 +80,13 @@ class FreelanceSystem {
         const available = this.getAvailableSlots();
         if (available.length === 0) return null;
         
-        // Prioritize cafe-feature-1 when unlocked
-        const featureGig = available.find(s => s.id === 'cafe-feature-1');
-        if (featureGig) return featureGig;
+        // Sort by offerPriority (higher first), then by slot order
+        available.sort((a, b) => {
+            if (a.offerPriority !== b.offerPriority) {
+                return b.offerPriority - a.offerPriority;
+            }
+            return 0;
+        });
         
         return available[0];
     }
@@ -97,6 +102,12 @@ class FreelanceSystem {
         
         presence.on('exit', (data) => {
             if (data.location.toString() === this.cafeLocationId.toString()) {
+                // Cancel pending locked chip timeout
+                if (this.lockedChipTimeout) {
+                    clearTimeout(this.lockedChipTimeout);
+                    this.lockedChipTimeout = null;
+                }
+                
                 if (this.currentRun && this.currentRun.state === JobState.OFFERED) {
                     this.currentRun.state = JobState.IDLE;
                 }
@@ -114,14 +125,26 @@ class FreelanceSystem {
         
         if (!isIdle || !isAtLocation) return;
         
-        // Check if cafe-feature-1 is locked (but not paid)
+        // Cancel any pending locked chip timeout
+        if (this.lockedChipTimeout) {
+            clearTimeout(this.lockedChipTimeout);
+            this.lockedChipTimeout = null;
+        }
+        
+        // Check if any gated slot is locked (has unlockRule but not yet unlocked)
         const nextLockedSlot = this.getNextLockedSlot();
-        if (nextLockedSlot && nextLockedSlot.id === 'cafe-feature-1') {
+        if (nextLockedSlot) {
             // Show locked chip for 2s, then offer next available gig
             this.notifyListeners('jobLocked', { slot: nextLockedSlot });
             
-            setTimeout(() => {
-                if (!this.currentRun || this.currentRun.state === JobState.IDLE || this.currentRun.state === JobState.PAID) {
+            this.lockedChipTimeout = setTimeout(() => {
+                this.lockedChipTimeout = null;
+                
+                // Re-check presence and idle state
+                const stillAtLocation = presence.isAt(this.cafeLocationId);
+                const stillIdle = !this.currentRun || this.currentRun.state === JobState.IDLE;
+                
+                if (stillAtLocation && stillIdle) {
                     const slot = this.getNextOfferable();
                     if (slot) {
                         this.currentRun = new JobRun(slot.id);
@@ -149,15 +172,16 @@ class FreelanceSystem {
         for (const slot of slots) {
             if (slot.kind !== 'freelance') continue;
             
-            // Don't show cafe-feature-1 as locked if it's already been paid
-            if (slot.id === 'cafe-feature-1') {
+            // Don't show one-shot slots as locked if already paid
+            if (!slot.repeatable) {
                 const history = this.slotHistory.get(slot.id);
                 if (history && history.state === JobState.PAID) {
                     continue;
                 }
             }
             
-            if (!slot.isUnlocked(this.skillsStub)) {
+            // Return first locked slot (has unlockRule but not met)
+            if (slot.unlockRule && !slot.isUnlocked(this.skillsStub)) {
                 return slot;
             }
         }

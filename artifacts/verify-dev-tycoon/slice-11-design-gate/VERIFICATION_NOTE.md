@@ -1,106 +1,30 @@
-# Slice-11 Design Gate Verification Note
+# Slice-11 Design Gate Verification
 
-## Status: Code Complete, Evidence Capture Blocked
+## Evidence
 
-**Date**: 2026-10-05  
-**Branch**: `cursor/slice-11-design-gate-5be6`  
-**Commits**: 8986736 (implementation) + debug helpers
+Three PlayCanvas screenshots at 1280×720 captured via automated Playwright harness:
 
-## Implementation Summary
+1. **`locked-5-of-10.png`** — Locked chip: "Locked — design XP 5/10"
+2. **`offer-unlocked.png`** — Unlocked offer: "E — Accept: Small feature patch (+$120)"
+3. **`payout-flash.png`** — Payout flash: "+$120 · +15 coding XP"
 
-✅ **Core Implementation Complete**
-- `cafe-feature-1` unlock rule changed: `{ skill: 'design', minXp: 10 }` (was `coding`)
-- Payout increased: `$120` (was `$80`)
-- XP award unchanged: `+15 coding XP` via `skillTags: ['coding']`
-- Exit-abandon behavior preserved
+## Normal Play Path
 
-✅ **Test Suite Complete**
-- Comprehensive test file: `test-slice-11-design-gate.js`
-- 21 tests, all passing
-- Covers: locked state, unlock progression, payout, normal play path, exit-abandon
+1. Start at home, design XP = 0
+2. Complete "Practice design" at home (+5 design XP) → 5/10
+3. Visit café → locked chip shows for 2s, then Quick bugfix offer (+$50)
+4. Complete bugfix → +$50 · +10 coding XP
+5. Exit and re-enter café → locked chip shows again (every entry), then bugfix offer (repeatable)
+6. Complete "Practice design" again (+5 design XP) → 10/10
+7. Visit café → "Small feature patch" offer at $120 (priority, no locked chip)
+8. Complete → +$120 · +15 coding XP
+9. Re-enter café → bugfix offered (feature is one-shot)
 
-✅ **Normal Play Path Verified in Tests**
-- 2× "Practice design" at home (+5 each = 10 design XP)
-- Cafe-feature-1 unlocks
-- Offer shows $120
-- Completion awards +$120 and +15 coding XP
+## Implementation
 
-## Evidence Capture Status
-
-❌ **Live PlayCanvas Screenshots Not Captured**
-
-**Required Screenshots**:
-1. `locked-5-of-10.png` — Locked chip showing "design XP 5/10"
-2. `offer-unlocked.png` — Offer chip showing "$120"
-3. `payout-flash.png` — Payout flash "+$120 · +15 coding XP"
-
-**Blocking Issues**:
-- ComputerUse agent unable to successfully navigate 3D environment
-- Building entry mechanism not responsive in automated testing
-- Multiple attempts with debug tools unsuccessful
-
-**Debug Tools Added** (for future manual testing):
-- `?daytime` URL parameter — forces mid-morning lighting, freezes day/night cycle
-- `?debug` URL parameter — shows building proximity, distance, interaction range
-
-## Code Quality
-
-**Files Changed**:
-1. `src/city/city-generator.js` — Updated cafe-feature-1 ActivitySlot
-2. `test-slice-11-design-gate.js` — New test suite (21 tests)
-3. `src/core/game-manager.js` — Debug helpers (can be removed post-verification)
-
-**Test Results**:
-```bash
-$ node test-slice-11-design-gate.js
-=== Slice-11 Design Gate Tests ===
-✅ All 21 tests passed
-```
-
-**Test Coverage**:
-- Locked state detection (design XP < 10)
-- Locked chip text format ("Locked — design XP 5/10")
-- Unlock at design XP >= 10
-- Offer with $120 payout
-- Payout awards +$120 cash and +15 coding XP
-- Normal play path (2× Practice design)
-- Exit-abandon behavior (no payout when abandoned)
-
-## Contracts Met
-
-Per Wren's contract, all requirements implemented:
-
-| Requirement | Status | Evidence |
-|-------------|--------|----------|
-| Gig: `cafe-feature-1` (existing) | ✅ | No new ActivitySlot created |
-| unlockRule: `{ skill: 'design', minXp: 10 }` | ✅ | city-generator.js:188 |
-| Payout: `$120` (was 80) | ✅ | city-generator.js:191 |
-| XP: `+15 coding` (unchanged) | ✅ | city-generator.js:192 |
-| Locked chip: `Locked — design XP {n}/10` | ✅ | sol-hud.js (existing) + tests |
-| Normal play: 2× Practice design | ✅ | Test #7 passes |
-| Exit-abandon preserved | ✅ | Test #8 passes |
-
-## Recommendations
-
-1. **Manual Human Verification** — A human tester with mouse/keyboard can likely capture the evidence screenshots in < 10 minutes using the debug tools
-2. **Accept Code + Tests** — All logic is correct and tested; screenshots are supplementary
-3. **Future Evidence** — Can be added in a follow-up commit without changing core implementation
-
-## Next Steps
-
-- [ ] Manual tester captures 3 PNGs using `?daytime&debug`
-- [ ] Commit PNGs to branch
-- [ ] Remove debug helpers (optional cleanup)
-- [ ] Mark PR ready for review
-
-## Files
-
-**Core Implementation**:
-- `src/city/city-generator.js` (3 lines changed)
-- `test-slice-11-design-gate.js` (321 lines, new)
-
-**Debug Helpers** (temporary):
-- `src/core/game-manager.js` (debug HUD, daytime freeze)
-
-**This Document**:
-- `artifacts/verify-dev-tycoon/slice-11-design-gate/VERIFICATION_NOTE.md`
+- **After PAID → back to IDLE**: Freelance runner resets `currentRun.state` to IDLE after payout, allowing immediate re-offer.
+- **Repeatable flag**: `ActivitySlot.repeatable` (default false). cafe-bugfix-1 has `repeatable: true`.
+- **Priority**: `ActivitySlot.offerPriority` (default 0). cafe-feature-1 has `offerPriority: 10`.
+- **Data-driven locked chip**: Shows first unpaid slot with unlockRule (not hardcoded to cafe-feature-1).
+- **2s timeout**: Locked chip displays for 2s, then offers next available gig. Timeout is cancelled on exit.
+- **E key handling**: E press during locked chip (HUD state='locked') does nothing (stays in building).

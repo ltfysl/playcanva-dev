@@ -270,6 +270,12 @@ class GameManager {
     
     handleInteraction() {
         if (this.isInBuilding) {
+            // Don't exit during locked chip display (wait for actual offer)
+            const hudState = this.solHUD ? this.solHUD.getCurrentState() : null;
+            if (hudState === 'locked') {
+                return;
+            }
+            
             if (this.tryRunnerInteraction()) {
                 return;
             }

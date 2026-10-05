@@ -18,3 +18,7 @@ class SkillsStub {
         return { ...this.skills };
     }
 }
+
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { SkillsStub };
+}
