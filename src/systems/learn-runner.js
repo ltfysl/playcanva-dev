@@ -30,6 +30,7 @@ class LearnRunner {
         this.homeLocationId = homeLocationId;
         this.skillsStub = skillsStub;
         this.currentRun = null;
+        this.lastPaidSlotIdByLocation = new Map();
         this.listeners = {
             jobOffered: [],
             jobAccepted: [],
@@ -64,7 +65,26 @@ class LearnRunner {
     
     getNextOfferable() {
         const available = this.getAvailableSlots();
-        return available.length > 0 ? available[0] : null;
+        if (available.length === 0) return null;
+        
+        const currentLocation = this.cityModule.getCurrentLocation();
+        if (!currentLocation) return null;
+        
+        const locationKey = currentLocation.locationId.toString();
+        const lastPaidSlotId = this.lastPaidSlotIdByLocation.get(locationKey);
+        
+        if (!lastPaidSlotId) {
+            return available[0];
+        }
+        
+        const lastPaidIndex = available.findIndex(s => s.id === lastPaidSlotId);
+        
+        if (lastPaidIndex === -1) {
+            return available[0];
+        }
+        
+        const nextIndex = (lastPaidIndex + 1) % available.length;
+        return available[nextIndex];
     }
     
     setupPresenceListeners() {
@@ -157,6 +177,12 @@ class LearnRunner {
         if (xpStub && xpStub.amount && skillTag && this.skillsStub) {
             this.skillsStub.addXp(skillTag, xpStub.amount);
             xp = { skill: skillTag, amount: xpStub.amount };
+        }
+        
+        const currentLocation = this.cityModule.getCurrentLocation();
+        if (currentLocation) {
+            const locationKey = currentLocation.locationId.toString();
+            this.lastPaidSlotIdByLocation.set(locationKey, this.currentRun.slotId);
         }
         
         this.notifyListeners('jobPaid', { 
