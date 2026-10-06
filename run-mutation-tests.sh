@@ -88,6 +88,56 @@ fi
 echo ""
 git checkout src/systems/freelance-system.js
 
+echo "Mutation (f): Change hasPendingLockedWindow() to return false"
+echo "Expected: test-real-freelance-pending-window.js fails (method not working)"
+sed -i 's/return !!this\.lockedChipTimeout;/return false;/' src/systems/freelance-system.js
+if node test-real-freelance-pending-window.js > /tmp/mutation-f.log 2>&1; then
+    echo "❌ MUTATION (f) FAILED: Test should have failed but passed"
+    cat /tmp/mutation-f.log
+    exit 1
+else
+    echo "✅ MUTATION (f) PASSED: test-real-freelance-pending-window.js correctly failed"
+    grep -A2 "Failed:" /tmp/mutation-f.log | head -3
+fi
+echo ""
+git checkout src/systems/freelance-system.js
+
+echo "Mutation (g): Restore global locked guard (no hasPendingLockedWindow check)"
+echo "Expected: test-e-key-locked-chip.js fails (office test breaks)"
+cp src/core/game-manager.js src/core/game-manager.js.tmp
+sed -i '/Don'\''t exit during timed locked chip window/,/if (this\.tryRunnerInteraction/c\
+            // Don'\''t exit during locked chip display (wait for actual offer)\
+            const hudState = this.solHUD ? this.solHUD.getCurrentState() : null;\
+            if (hudState === '\''locked'\'') {\
+                return;\
+            }\
+            \
+            if (this.tryRunnerInteraction' src/core/game-manager.js
+if node test-e-key-locked-chip.js > /tmp/mutation-g.log 2>&1; then
+    echo "❌ MUTATION (g) FAILED: Test should have failed but passed"
+    cat /tmp/mutation-g.log
+    exit 1
+else
+    echo "✅ MUTATION (g) PASSED: test-e-key-locked-chip.js correctly failed"
+    grep -A2 "Failed:" /tmp/mutation-g.log | head -3
+fi
+echo ""
+mv src/core/game-manager.js.tmp src/core/game-manager.js
+
+echo "Mutation (h): Remove locked guard entirely"
+echo "Expected: test-real-freelance-pending-window.js fails (café test breaks)"
+sed -i '/Don'\''t exit during timed locked chip window/,/}/d' src/core/game-manager.js
+if node test-real-freelance-pending-window.js > /tmp/mutation-h.log 2>&1; then
+    echo "❌ MUTATION (h) FAILED: Test should have failed but passed"
+    cat /tmp/mutation-h.log
+    exit 1
+else
+    echo "✅ MUTATION (h) PASSED: test-real-freelance-pending-window.js correctly failed"
+    grep -A2 "Failed:" /tmp/mutation-h.log | head -3
+fi
+echo ""
+git checkout src/core/game-manager.js
+
 echo ""
 echo "=== All Mutation Tests Passed ==="
-echo "All 5 mutations correctly caused their expected tests to fail."
+echo "All 8 mutations correctly caused their expected tests to fail."

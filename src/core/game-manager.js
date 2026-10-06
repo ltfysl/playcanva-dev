@@ -273,9 +273,7 @@ class GameManager {
             // Don't exit during timed locked chip window (2s countdown)
             const hudState = this.solHUD ? this.solHUD.getCurrentState() : null;
             if (hudState === 'locked') {
-                const hasPendingWindow = (this.freelanceSystem && typeof this.freelanceSystem.hasPendingLockedWindow === 'function' && this.freelanceSystem.hasPendingLockedWindow()) ||
-                    (this.runnerRegistry && Array.from(runnerRegistry.runners.values()).some(r => typeof r.hasPendingLockedWindow === 'function' && r.hasPendingLockedWindow()));
-                if (hasPendingWindow) {
+                if (this.freelanceSystem && typeof this.freelanceSystem.hasPendingLockedWindow === 'function' && this.freelanceSystem.hasPendingLockedWindow()) {
                     return;
                 }
             }

@@ -27,9 +27,29 @@ global.pc = {
 };
 
 global.document = {
-    createElement: () => ({}),
-    getElementById: () => null
+    createElement: (tag) => ({
+        id: null,
+        style: {
+            cssText: '',
+            opacity: '0'
+        },
+        textContent: '',
+        appendChild: () => {}
+    }),
+    getElementById: (id) => {
+        if (id === 'ui-overlay') {
+            return {
+                appendChild: () => {}
+            };
+        }
+        if (id === 'sol-hud') {
+            return global.testHudElement;
+        }
+        return null;
+    }
 };
+
+global.testHudElement = null;
 
 function loadModule(path, exportNames) {
     const code = fs.readFileSync(path, 'utf8');
@@ -54,6 +74,9 @@ const { LocationId, LocationData, ActivitySlot, CityModule, BuildingKind, Unlock
 
 const freelanceModule = loadModule('./src/systems/freelance-system.js', ['FreelanceSystem']);
 const { FreelanceSystem } = freelanceModule;
+
+const solHudModule = loadModule('./src/ui/sol-hud.js', ['SolHUD']);
+const { SolHUD } = solHudModule;
 
 // Read café slot configs from real city-generator.js
 const cityGenCode = fs.readFileSync('./src/city/city-generator.js', 'utf8');
@@ -122,11 +145,6 @@ function parseSlotConfig(code) {
 const bugfixConfig = parseSlotConfig(bugfixSlotMatch[1]);
 const featureConfig = parseSlotConfig(featureSlotMatch[1]);
 
-function generateLockedChipText(unlockRule, skillsStub) {
-    const currentXp = skillsStub ? skillsStub.getXp(unlockRule.skill) : 0;
-    return `Locked — ${unlockRule.skill} XP ${currentXp}/${unlockRule.minXp}`;
-}
-
 console.log('=== Slice-11 Design Gate Tests (Real Source) ===\n');
 console.log('Loaded café slots from src/city/city-generator.js:');
 console.log(`  cafe-bugfix-1: unlocked, $${bugfixConfig.payoutStub.amount}, +${bugfixConfig.xpStub.amount} coding XP`);
@@ -164,10 +182,17 @@ cityModule.registerLocation(cafeLocation);
 
 const freelanceSystem = new FreelanceSystem(cityModule, cafeLocationId, skillsStub);
 
+const solHUD = new SolHUD();
+global.testHudElement = solHUD.element;
+
 console.log('Test 1: cafe-feature-1 locked with design XP < 10');
 assert(!featureSlot.isUnlocked(skillsStub), 'Feature locked with 0 design XP');
-const lockedChip0 = generateLockedChipText(featureSlot.unlockRule, skillsStub);
+
+// Use real SolHUD to generate locked chip text
+solHUD.showLocked(featureSlot.unlockRule, skillsStub);
+const lockedChip0 = solHUD.element.textContent;
 assert(lockedChip0 === 'Locked — design XP 0/10', `Locked chip text correct: "${lockedChip0}"`);
+
 const lockedSlot = freelanceSystem.getNextLockedSlot();
 assert(lockedSlot && lockedSlot.id === 'cafe-feature-1', 'getNextLockedSlot returns cafe-feature-1');
 console.log();
@@ -175,8 +200,12 @@ console.log();
 console.log('Test 2: cafe-feature-1 still locked after 5 design XP');
 skillsStub.addXp('design', 5);
 assert(!featureSlot.isUnlocked(skillsStub), 'Feature locked with 5 design XP');
-const lockedChip5 = generateLockedChipText(featureSlot.unlockRule, skillsStub);
+
+// Use real SolHUD to generate locked chip text
+solHUD.showLocked(featureSlot.unlockRule, skillsStub);
+const lockedChip5 = solHUD.element.textContent;
 assert(lockedChip5 === 'Locked — design XP 5/10', `Locked chip text updates: "${lockedChip5}"`);
+
 const available5 = freelanceSystem.getAvailableSlots();
 assert(!available5.some(s => s.id === 'cafe-feature-1'), 'cafe-feature-1 not in available slots');
 console.log();
@@ -247,6 +276,7 @@ if (failed === 0) {
     console.log('\n✅ All tests passed!');
     console.log('\nUsing REAL FreelanceSystem from src/systems/freelance-system.js');
     console.log('Using REAL CityModule from src/core/city-module.js');
+    console.log('Using REAL SolHUD from src/ui/sol-hud.js (locked chip text)');
     console.log('Using REAL ActivitySlot configs from src/city/city-generator.js');
     process.exit(0);
 } else {
