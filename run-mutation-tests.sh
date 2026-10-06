@@ -14,7 +14,9 @@ restore_files() {
     rm -f src/core/game-manager.js.backup
 }
 
-trap restore_files EXIT INT TERM
+trap restore_files EXIT
+trap 'restore_files; exit 130' INT
+trap 'restore_files; exit 143' TERM
 
 abort_mutation() {
     echo "❌ MUTATION FAILED: $1"
