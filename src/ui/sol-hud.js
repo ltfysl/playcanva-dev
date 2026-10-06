@@ -115,6 +115,32 @@ class SolHUD {
         }, 1500);
     }
     
+    showProductOffer(payoutAmount) {
+        this.show(`E — Ship MVP (+$${payoutAmount})`, 'offered');
+    }
+    
+    showProductInProgress() {
+        this.show('Shipping… · E leave (no pay)', 'inProgress');
+    }
+    
+    showProductPayout(amount, xp = null) {
+        let text = `+$${amount}`;
+        if (xp && xp.amount && xp.skill) {
+            text += ` · +${xp.amount} ${xp.skill} XP`;
+        }
+        text += ' · MVP live';
+        this.show(text, 'payout');
+        
+        if (this.payoutFlashTimeout) {
+            clearTimeout(this.payoutFlashTimeout);
+        }
+        
+        this.payoutFlashTimeout = setTimeout(() => {
+            this.hide();
+            this.payoutFlashTimeout = null;
+        }, 1500);
+    }
+    
     showLocked(unlockRule, skillsStub) {
         const currentXp = skillsStub ? skillsStub.getXp(unlockRule.skill) : 0;
         const text = `Locked — ${unlockRule.skill} XP ${currentXp}/${unlockRule.minXp}`;

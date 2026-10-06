@@ -113,9 +113,6 @@ class ActivitySlot {
         this.kind = config.kind || 'activity';
         this.payoutStub = config.payoutStub || null;
         this.xpStub = config.xpStub || null;
-        this.productStub = config.productStub || null;
-        this.repeatable = config.repeatable !== undefined ? config.repeatable : true;
-        this.offerPriority = config.offerPriority || 0;
     }
     
     isUnlocked(skillsStub = null) {

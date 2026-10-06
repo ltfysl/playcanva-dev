@@ -126,6 +126,19 @@ class CityGenerator {
                     repeatable: false,
                     offerPriority: 10
                 }),
+                new ActivitySlot('home-ship-mvp-1', {
+                    name: 'Ship MVP',
+                    skillTags: ['coding'],
+                    unlockRule: { skill: 'coding', minXp: 30 },
+                    durationHint: 50,
+                    kind: 'product',
+                    payoutStub: { type: 'cash', amount: 80 },
+                    xpStub: { skill: 'coding', amount: 15 },
+                    productStub: { id: 'mvp-1', name: 'Side Project MVP', mrrStub: 10 },
+                    repeatable: false,
+                    offerPriority: 10
+                }),
+
                 new ActivitySlot('work-desk', {
                     name: 'Work at Desk',
                     skillTags: [],

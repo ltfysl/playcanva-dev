@@ -102,7 +102,6 @@ class GameManager {
         this.setupFreelanceListeners();
         this.setupLearnListeners();
         this.setupCareerListeners();
-        this.setupProductListeners();
     }
     
     setupFreelanceListeners() {
@@ -235,48 +234,6 @@ class GameManager {
         checkCareerRunner();
     }
     
-    setupProductListeners() {
-        const checkProductRunner = () => {
-            if (this.productRunner) {
-                runnerRegistry.register('product', this.productRunner);
-                
-                this.productRunner.on('jobOffered', (data) => {
-                    const payout = data.slot.payoutStub.amount;
-                    this.solHUD.showProductOffer(payout);
-                });
-                
-                this.productRunner.on('jobAccepted', (data) => {
-                    this.productRunner.startJob();
-                });
-                
-                this.productRunner.on('jobStarted', (data) => {
-                    this.solHUD.showProductInProgress();
-                });
-                
-                this.productRunner.on('jobPaid', (data) => {
-                    this.solHUD.showProductPayout(data.payout.amount, data.xp);
-                    console.log('Product shipped:', data.payout.amount, 'XP awarded:', data.xp, 'New balance:', data.newBalance);
-                });
-                
-                this.productRunner.on('jobLocked', (data) => {
-                    if (data.slot.unlockRule) {
-                        this.solHUD.showLocked(data.slot.unlockRule, this.skillsStub);
-                    }
-                });
-                
-                this.cityModule.getPresence().on('enter', (data) => {
-                    if (data.location.toString() === this.productRunner.homeLocationId.toString()) {
-                        this.productRunner.checkAndOfferJob();
-                    }
-                });
-            } else {
-                setTimeout(checkProductRunner, 100);
-            }
-        };
-        
-        checkProductRunner();
-    }
-    
     updateSolHUDForLocation() {
         if (!this.freelanceSystem || !this.solHUD) return;
         
@@ -335,37 +292,10 @@ class GameManager {
         const slots = currentLocation.getActivitySlots();
         if (slots.length === 0) return false;
         
-        const runners = {
-            product: runnerRegistry.get('product'),
-            career: runnerRegistry.get('career'),
-            freelance: runnerRegistry.get('freelance'),
-            learn: runnerRegistry.get('learn')
-        };
-        
-        if (runners.product && runners.product.hasPendingLockedWindow && runners.product.hasPendingLockedWindow()) {
-            return false;
-        }
-        
-        if (runners.freelance && runners.freelance.hasPendingLockedWindow && runners.freelance.hasPendingLockedWindow()) {
-            return false;
-        }
-        
-        for (const kind of ['product', 'career', 'freelance', 'learn']) {
-            const runner = runners[kind];
-            if (!runner) continue;
+        for (const slot of slots) {
+            if (!slot.kind) continue;
             
-            const currentRun = runner.getCurrentRun();
-            if (!currentRun) continue;
-            
-            if (currentRun.state === 'inProgress') {
-                return false;
-            }
-        }
-        
-        const priorityOrder = ['product', 'career', 'freelance', 'learn'];
-        
-        for (const kind of priorityOrder) {
-            const runner = runners[kind];
+            const runner = runnerRegistry.get(slot.kind);
             if (!runner) continue;
             
             const currentRun = runner.getCurrentRun();
@@ -446,21 +376,8 @@ class GameManager {
                     this.learnRunner.checkAndOfferJob();
                 }
             }
-                
-                const hasProductSlots = location.getActivitySlots().some(s => s.kind === 'product');
-                if (hasProductSlots && this.productRunner) {
-                    this.productRunner.checkAndOfferJob();
-                }
             
             if (this.freelanceSystem && locationId.toString() === this.freelanceSystem.cafeLocationId.toString()) {
-                
-                const hasProductSlots = location.getActivitySlots().some(s => s.kind === 'product');
-                if (hasProductSlots && this.productRunner) {
-                    const currentRun = this.productRunner.getCurrentRun();
-                    if (currentRun && currentRun.state === 'inProgress') {
-                        shouldShowAbandoned = true;
-                    }
-                }
                 this.freelanceSystem.checkAndOfferJob();
             }
             
@@ -485,14 +402,6 @@ class GameManager {
                 const hasLearnSlots = location.getActivitySlots().some(s => s.kind === 'learn');
                 if (hasLearnSlots && this.learnRunner) {
                     const currentRun = this.learnRunner.getCurrentRun();
-                    if (currentRun && currentRun.state === 'inProgress') {
-                        shouldShowAbandoned = true;
-                    }
-                }
-                
-                const hasProductSlots = location.getActivitySlots().some(s => s.kind === 'product');
-                if (hasProductSlots && this.productRunner) {
-                    const currentRun = this.productRunner.getCurrentRun();
                     if (currentRun && currentRun.state === 'inProgress') {
                         shouldShowAbandoned = true;
                     }
@@ -563,11 +472,6 @@ class GameManager {
             this.careerRunner.update(dt);
         }
         
-        
-        
-        if (this.productRunner) {
-            this.productRunner.update(dt);
-        }
         this.checkDistrictTransition();
     }
     
