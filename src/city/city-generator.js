@@ -180,16 +180,18 @@ class CityGenerator {
                     durationHint: 30,
                     kind: 'freelance',
                     payoutStub: { currency: 'cash', amount: 50 },
-                    xpStub: { amount: 10 }
+                    xpStub: { amount: 10 },
+                    repeatable: true
                 }),
                 new ActivitySlot('cafe-feature-1', {
                     name: 'Small feature patch',
                     skillTags: ['coding'],
-                    unlockRule: { skill: 'coding', minXp: 10 },
+                    unlockRule: { skill: 'design', minXp: 10 },
                     durationHint: 45,
                     kind: 'freelance',
-                    payoutStub: { currency: 'cash', amount: 80 },
-                    xpStub: { amount: 15 }
+                    payoutStub: { currency: 'cash', amount: 120 },
+                    xpStub: { amount: 15 },
+                    offerPriority: 10
                 })
             ]
         });

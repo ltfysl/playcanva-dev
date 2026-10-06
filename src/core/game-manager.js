@@ -270,6 +270,14 @@ class GameManager {
     
     handleInteraction() {
         if (this.isInBuilding) {
+            // Don't exit during timed locked chip window (2s countdown)
+            const hudState = this.solHUD ? this.solHUD.getCurrentState() : null;
+            if (hudState === 'locked') {
+                if (this.freelanceSystem && typeof this.freelanceSystem.hasPendingLockedWindow === 'function' && this.freelanceSystem.hasPendingLockedWindow()) {
+                    return;
+                }
+            }
+            
             if (this.tryRunnerInteraction()) {
                 return;
             }
