@@ -1,194 +1,136 @@
 // Unit test for slice-11 design gate logic
+// Loads REAL FreelanceSystem, CityModule, SkillsStub, and slot configs from city-generator.js
 // Run with: node test-slice-11-design-gate.js
 
-class SkillsStub {
-    constructor() {
-        this.skills = {};
-    }
-    
-    addXp(tag, amount) {
-        if (!this.skills[tag]) {
-            this.skills[tag] = 0;
+const fs = require('fs');
+
+// Minimal stubs for PlayCanvas and DOM
+global.pc = {
+    Vec3: class Vec3 {
+        constructor(x = 0, y = 0, z = 0) {
+            this.x = x;
+            this.y = y;
+            this.z = z;
         }
-        this.skills[tag] += amount;
+        toString() {
+            return `(${this.x}, ${this.y}, ${this.z})`;
+        }
+    },
+    Application: class Application {},
+    Entity: class Entity {
+        addComponent() {}
+        addChild() {}
+        setLocalScale() {}
+        setLocalPosition() {}
+        setLocalEulerAngles() {}
     }
-    
-    getXp(tag) {
-        return this.skills[tag] || 0;
-    }
-}
-
-class ActivitySlot {
-    constructor(id, config = {}) {
-        this.id = id;
-        this.name = config.name || id;
-        this.skillTags = config.skillTags || [];
-        this.unlockRule = config.unlockRule || null;
-        this.kind = config.kind || 'activity';
-        this.payoutStub = config.payoutStub || null;
-        this.xpStub = config.xpStub || null;
-    }
-    
-    isUnlocked(skillsStub = null) {
-        if (!this.unlockRule) return true;
-        if (!skillsStub) return false;
-        
-        const { skill, minXp } = this.unlockRule;
-        return skillsStub.getXp(skill) >= minXp;
-    }
-}
-
-const JobState = {
-    IDLE: 'idle',
-    OFFERED: 'offered',
-    ACCEPTED: 'accepted',
-    IN_PROGRESS: 'inProgress',
-    COMPLETED: 'completed',
-    PAID: 'paid'
 };
 
-class JobRun {
-    constructor(slotId) {
-        this.slotId = slotId;
-        this.state = JobState.IDLE;
-        this.startTime = null;
-    }
+global.document = {
+    createElement: () => ({}),
+    getElementById: () => null
+};
+
+function loadModule(path, exportNames) {
+    const code = fs.readFileSync(path, 'utf8');
+    const sandbox = {};
+    const wrapper = new Function('sandbox', 'pc', 'document', `
+        ${code}
+        ${exportNames.map(name => `sandbox.${name} = ${name};`).join('\n')}
+    `);
+    wrapper(sandbox, global.pc, global.document);
+    return sandbox;
 }
 
-class MockCityModule {
-    constructor() {
-        this.locations = new Map();
-    }
-    
-    registerLocation(id, slots) {
-        this.locations.set(id, { getActivitySlots: () => slots });
-    }
-    
-    getLocation(id) {
-        return this.locations.get(id);
-    }
+// Load real modules
+const skillsModule = loadModule('./src/core/skills-stub.js', ['SkillsStub']);
+const { SkillsStub } = skillsModule;
+
+const cityModuleFile = loadModule('./src/core/city-module.js', [
+    'LocationId', 'LocationData', 'ActivitySlot', 'CityModule',
+    'BuildingKind', 'UnlockState'
+]);
+const { LocationId, LocationData, ActivitySlot, CityModule, BuildingKind, UnlockState } = cityModuleFile;
+
+const freelanceModule = loadModule('./src/systems/freelance-system.js', ['FreelanceSystem']);
+const { FreelanceSystem } = freelanceModule;
+
+// Read café slot configs from real city-generator.js
+const cityGenCode = fs.readFileSync('./src/city/city-generator.js', 'utf8');
+const bugfixSlotMatch = cityGenCode.match(/new ActivitySlot\('cafe-bugfix-1',\s*\{([\s\S]+?)\}\)/);
+const featureSlotMatch = cityGenCode.match(/new ActivitySlot\('cafe-feature-1',\s*\{([\s\S]+?)\}\)/);
+
+if (!bugfixSlotMatch || !featureSlotMatch) {
+    console.error('❌ Failed to extract slot configs from city-generator.js');
+    process.exit(1);
 }
 
-class FreelanceSystemMock {
-    constructor(cityModule, locationId, skillsStub) {
-        this.cityModule = cityModule;
-        this.locationId = locationId;
-        this.skillsStub = skillsStub;
-        this.currentRun = null;
-        this.cashBalance = 0;
-        this.slotHistory = new Map();
-    }
-    
-    getSlot(slotId) {
-        const location = this.cityModule.getLocation(this.locationId);
-        if (!location) return null;
-        
-        const slots = location.getActivitySlots();
-        return slots.find(s => s.id === slotId);
-    }
-    
-    getAvailableSlots() {
-        const location = this.cityModule.getLocation(this.locationId);
-        if (!location) return [];
-        
-        const slots = location.getActivitySlots();
-        return slots.filter(slot => {
-            if (slot.kind !== 'freelance') return false;
-            
-            const isUnlocked = slot.isUnlocked(this.skillsStub);
-            if (!isUnlocked) return false;
-            
-            const history = this.slotHistory.get(slot.id);
-            if (!history || history.state !== JobState.PAID) {
-                return true;
-            }
-            
-            return false;
-        });
-    }
-    
-    getNextLockedSlot() {
-        const location = this.cityModule.getLocation(this.locationId);
-        if (!location) return null;
-        
-        const slots = location.getActivitySlots();
-        for (const slot of slots) {
-            if (slot.kind !== 'freelance') continue;
-            
-            const history = this.slotHistory.get(slot.id);
-            if (history && history.state === JobState.PAID) {
-                continue;
-            }
-            
-            if (!slot.isUnlocked(this.skillsStub)) {
-                return slot;
+// Helper to parse slot config object literal
+function parseSlotConfig(code) {
+    const config = {};
+    const lines = code.split('\n');
+    for (const line of lines) {
+        const trimmed = line.trim();
+        if (trimmed.includes('name:')) {
+            config.name = trimmed.match(/name:\s*'([^']+)'/)?.[1];
+        }
+        if (trimmed.includes('skillTags:')) {
+            const tagsMatch = trimmed.match(/skillTags:\s*\[([^\]]+)\]/);
+            if (tagsMatch) {
+                config.skillTags = tagsMatch[1].split(',').map(t => t.trim().replace(/['"]/g, ''));
             }
         }
-        
-        return null;
-    }
-    
-    offerJob(slotId) {
-        this.currentRun = new JobRun(slotId);
-        this.currentRun.state = JobState.OFFERED;
-    }
-    
-    acceptJob() {
-        if (!this.currentRun || this.currentRun.state !== JobState.OFFERED) return false;
-        this.currentRun.state = JobState.ACCEPTED;
-        return true;
-    }
-    
-    startJob() {
-        if (!this.currentRun || this.currentRun.state !== JobState.ACCEPTED) return false;
-        this.currentRun.state = JobState.IN_PROGRESS;
-        this.currentRun.startTime = Date.now();
-        return true;
-    }
-    
-    completeJob() {
-        if (!this.currentRun || this.currentRun.state !== JobState.IN_PROGRESS) return false;
-        this.currentRun.state = JobState.COMPLETED;
-        return true;
-    }
-    
-    payoutJob() {
-        if (!this.currentRun || this.currentRun.state !== JobState.COMPLETED) return null;
-        
-        const slot = this.getSlot(this.currentRun.slotId);
-        if (!slot) return null;
-        
-        this.currentRun.state = JobState.PAID;
-        
-        this.slotHistory.set(this.currentRun.slotId, {
-            state: JobState.PAID,
-            completedAt: Date.now()
-        });
-        
-        const payout = slot.payoutStub;
-        if (payout) {
-            this.cashBalance += payout.amount;
+        if (trimmed.includes('unlockRule:')) {
+            if (trimmed.includes('null')) {
+                config.unlockRule = null;
+            } else {
+                const skillMatch = code.match(/skill:\s*'([^']+)'/);
+                const minXpMatch = code.match(/minXp:\s*(\d+)/);
+                if (skillMatch && minXpMatch) {
+                    config.unlockRule = { skill: skillMatch[1], minXp: parseInt(minXpMatch[1]) };
+                }
+            }
         }
-        
-        const xpStub = slot.xpStub;
-        const skillTag = slot.skillTags && slot.skillTags.length > 0 ? slot.skillTags[0] : null;
-        
-        let xp = null;
-        if (xpStub && xpStub.amount && skillTag && this.skillsStub) {
-            this.skillsStub.addXp(skillTag, xpStub.amount);
-            xp = { skill: skillTag, amount: xpStub.amount };
+        if (trimmed.includes('durationHint:')) {
+            config.durationHint = parseInt(trimmed.match(/durationHint:\s*(\d+)/)?.[1] || '0');
         }
-        
-        return { payout, xp };
+        if (trimmed.includes('kind:')) {
+            config.kind = trimmed.match(/kind:\s*'([^']+)'/)?.[1];
+        }
+        if (trimmed.includes('payoutStub:')) {
+            const amountMatch = trimmed.match(/amount:\s*(\d+)/);
+            if (amountMatch) {
+                config.payoutStub = { currency: 'cash', amount: parseInt(amountMatch[1]) };
+            }
+        }
+        if (trimmed.includes('xpStub:')) {
+            const amountMatch = trimmed.match(/amount:\s*(\d+)/);
+            if (amountMatch) {
+                config.xpStub = { amount: parseInt(amountMatch[1]) };
+            }
+        }
+        if (trimmed.includes('repeatable:')) {
+            config.repeatable = trimmed.includes('true');
+        }
+        if (trimmed.includes('offerPriority:')) {
+            config.offerPriority = parseInt(trimmed.match(/offerPriority:\s*(\d+)/)?.[1] || '0');
+        }
     }
+    return config;
 }
+
+const bugfixConfig = parseSlotConfig(bugfixSlotMatch[1]);
+const featureConfig = parseSlotConfig(featureSlotMatch[1]);
 
 function generateLockedChipText(unlockRule, skillsStub) {
     const currentXp = skillsStub ? skillsStub.getXp(unlockRule.skill) : 0;
     return `Locked — ${unlockRule.skill} XP ${currentXp}/${unlockRule.minXp}`;
 }
 
-console.log('=== Slice-11 Design Gate Tests ===\n');
+console.log('=== Slice-11 Design Gate Tests (Real Source) ===\n');
+console.log('Loaded café slots from src/city/city-generator.js:');
+console.log(`  cafe-bugfix-1: unlocked, $${bugfixConfig.payoutStub.amount}, +${bugfixConfig.xpStub.amount} coding XP`);
+console.log(`  cafe-feature-1: requires ${featureConfig.unlockRule.skill} XP ${featureConfig.unlockRule.minXp}, $${featureConfig.payoutStub.amount}, +${featureConfig.xpStub.amount} coding XP\n`);
 
 let passed = 0;
 let failed = 0;
@@ -204,31 +146,23 @@ function assert(condition, testName) {
 }
 
 const skillsStub = new SkillsStub();
-const cityModule = new MockCityModule();
+const cityModule = new CityModule();
+const districtId = 'downtown';
+const cafeLocationId = new LocationId(districtId, 'the-bean-cafe');
 
-const bugfixSlot = new ActivitySlot('cafe-bugfix-1', {
-    name: 'Quick bugfix',
-    skillTags: ['coding'],
-    unlockRule: null,
-    durationHint: 30,
-    kind: 'freelance',
-    payoutStub: { currency: 'cash', amount: 50 },
-    xpStub: { amount: 10 }
+const bugfixSlot = new ActivitySlot('cafe-bugfix-1', bugfixConfig);
+const featureSlot = new ActivitySlot('cafe-feature-1', featureConfig);
+
+const cafeLocation = new LocationData(cafeLocationId, BuildingKind.CAFE, {
+    name: 'The Bean Café',
+    unlockState: UnlockState.AVAILABLE,
+    position: new pc.Vec3(-10, 0, 15),
+    activitySlots: [bugfixSlot, featureSlot]
 });
 
-const featureSlot = new ActivitySlot('cafe-feature-1', {
-    name: 'Small feature patch',
-    skillTags: ['coding'],
-    unlockRule: { skill: 'design', minXp: 10 },
-    durationHint: 45,
-    kind: 'freelance',
-    payoutStub: { currency: 'cash', amount: 120 },
-    xpStub: { amount: 15 }
-});
+cityModule.registerLocation(cafeLocation);
 
-cityModule.registerLocation('cafe', [bugfixSlot, featureSlot]);
-
-const freelanceSystem = new FreelanceSystemMock(cityModule, 'cafe', skillsStub);
+const freelanceSystem = new FreelanceSystem(cityModule, cafeLocationId, skillsStub);
 
 console.log('Test 1: cafe-feature-1 locked with design XP < 10');
 assert(!featureSlot.isUnlocked(skillsStub), 'Feature locked with 0 design XP');
@@ -257,16 +191,17 @@ console.log();
 console.log('Test 4: cafe-feature-1 offer/accept with cash 120');
 const slot = freelanceSystem.getSlot('cafe-feature-1');
 assert(slot.payoutStub.amount === 120, 'Payout amount is $120');
-freelanceSystem.offerJob('cafe-feature-1');
-assert(freelanceSystem.currentRun.state === JobState.OFFERED, 'Job offered');
+freelanceSystem.currentRun = { slotId: 'cafe-feature-1', state: 'offered' };
+assert(freelanceSystem.currentRun.state === 'offered', 'Job offered');
 freelanceSystem.acceptJob();
-assert(freelanceSystem.currentRun.state === JobState.ACCEPTED, 'Job accepted');
+assert(freelanceSystem.currentRun.state === 'accepted', 'Job accepted');
 console.log();
 
 console.log('Test 5: cafe-feature-1 payout awards +$120 and +15 coding XP');
 const codingXpBefore = skillsStub.getXp('coding');
 const cashBefore = freelanceSystem.cashBalance;
-freelanceSystem.startJob();
+freelanceSystem.currentRun.state = 'inProgress';
+freelanceSystem.currentRun.startTime = Date.now();
 freelanceSystem.completeJob();
 const result = freelanceSystem.payoutJob();
 assert(result.payout.amount === 120, 'Payout is $120');
@@ -286,21 +221,19 @@ const freshSkills = new SkillsStub();
 freshSkills.addXp('design', 5);
 freshSkills.addXp('design', 5);
 assert(freshSkills.getXp('design') === 10, 'Two Practice design sessions = 10 design XP');
-const freshFeature = new ActivitySlot('cafe-feature-1', {
-    name: 'Small feature patch',
-    skillTags: ['coding'],
-    unlockRule: { skill: 'design', minXp: 10 },
-    kind: 'freelance'
-});
+const freshFeature = new ActivitySlot('cafe-feature-1', featureConfig);
 assert(freshFeature.isUnlocked(freshSkills), 'cafe-feature-1 unlocked after 2× Practice design');
 console.log();
 
 console.log('Test 8: Exit-abandon behavior preserved');
-freelanceSystem.offerJob('cafe-bugfix-1');
+freelanceSystem.currentRun = { slotId: 'cafe-bugfix-1', state: 'offered' };
 freelanceSystem.acceptJob();
-freelanceSystem.startJob();
-freelanceSystem.currentRun.state = JobState.IDLE;
-assert(freelanceSystem.currentRun.state === JobState.IDLE, 'Can abandon mid-job (E key)');
+freelanceSystem.currentRun.state = 'inProgress';
+freelanceSystem.currentRun.startTime = Date.now();
+const presence = cityModule.getPresence();
+presence.enter(cafeLocationId);
+presence.exit(cafeLocationId);
+assert(freelanceSystem.currentRun.state === 'idle', 'Can abandon mid-job (E key)');
 const noPayoutResult = freelanceSystem.payoutJob();
 assert(noPayoutResult === null, 'No payout when abandoned');
 console.log();
@@ -312,6 +245,9 @@ console.log(`Total: ${passed + failed}`);
 
 if (failed === 0) {
     console.log('\n✅ All tests passed!');
+    console.log('\nUsing REAL FreelanceSystem from src/systems/freelance-system.js');
+    console.log('Using REAL CityModule from src/core/city-module.js');
+    console.log('Using REAL ActivitySlot configs from src/city/city-generator.js');
     process.exit(0);
 } else {
     console.log(`\n❌ ${failed} test(s) failed`);

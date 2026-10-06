@@ -271,6 +271,10 @@ class FreelanceSystem {
         return this.cashBalance;
     }
     
+    hasPendingLockedWindow() {
+        return !!this.lockedChipTimeout;
+    }
+    
     on(event, callback) {
         if (this.listeners[event]) {
             this.listeners[event].push(callback);

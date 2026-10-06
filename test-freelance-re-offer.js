@@ -1,331 +1,132 @@
 // Regression test for freelance re-offer after PAID
 // Tests: repeatable flag, offerPriority, locked chip every entry, 2s delay, timeout cancellation
+// Loads REAL FreelanceSystem, CityModule, SkillsStub, and slot configs from city-generator.js
 // Run with: node test-freelance-re-offer.js
 
-const JobState = {
-    IDLE: 'idle',
-    OFFERED: 'offered',
-    ACCEPTED: 'accepted',
-    IN_PROGRESS: 'inProgress',
-    COMPLETED: 'completed',
-    PAID: 'paid'
+const fs = require('fs');
+
+// Minimal stubs for PlayCanvas and DOM
+global.pc = {
+    Vec3: class Vec3 {
+        constructor(x = 0, y = 0, z = 0) {
+            this.x = x;
+            this.y = y;
+            this.z = z;
+        }
+        toString() {
+            return `(${this.x}, ${this.y}, ${this.z})`;
+        }
+    },
+    Application: class Application {},
+    Entity: class Entity {
+        addComponent() {}
+        addChild() {}
+        setLocalScale() {}
+        setLocalPosition() {}
+        setLocalEulerAngles() {}
+    }
 };
 
-class JobRun {
-    constructor(slotId) {
-        this.slotId = slotId;
-        this.state = JobState.IDLE;
-        this.startTime = null;
-    }
+global.document = {
+    createElement: () => ({}),
+    getElementById: () => null
+};
+
+function loadModule(path, exportNames) {
+    const code = fs.readFileSync(path, 'utf8');
+    const sandbox = {};
+    const wrapper = new Function('sandbox', 'pc', 'document', `
+        ${code}
+        ${exportNames.map(name => `sandbox.${name} = ${name};`).join('\n')}
+    `);
+    wrapper(sandbox, global.pc, global.document);
+    return sandbox;
 }
 
-class SkillsStub {
-    constructor() {
-        this.skills = {};
-    }
-    
-    addXp(tag, amount) {
-        if (!this.skills[tag]) {
-            this.skills[tag] = 0;
-        }
-        this.skills[tag] += amount;
-    }
-    
-    getXp(tag) {
-        return this.skills[tag] || 0;
-    }
+// Load real modules
+const skillsModule = loadModule('./src/core/skills-stub.js', ['SkillsStub']);
+const { SkillsStub } = skillsModule;
+
+const cityModuleFile = loadModule('./src/core/city-module.js', [
+    'LocationId', 'LocationData', 'ActivitySlot', 'CityModule',
+    'BuildingKind', 'UnlockState'
+]);
+const { LocationId, LocationData, ActivitySlot, CityModule, BuildingKind, UnlockState } = cityModuleFile;
+
+const freelanceModule = loadModule('./src/systems/freelance-system.js', ['FreelanceSystem']);
+const { FreelanceSystem } = freelanceModule;
+
+// Read café slot configs from real city-generator.js
+const cityGenCode = fs.readFileSync('./src/city/city-generator.js', 'utf8');
+const bugfixSlotMatch = cityGenCode.match(/new ActivitySlot\('cafe-bugfix-1',\s*\{([\s\S]+?)\}\)/);
+const featureSlotMatch = cityGenCode.match(/new ActivitySlot\('cafe-feature-1',\s*\{([\s\S]+?)\}\)/);
+
+if (!bugfixSlotMatch || !featureSlotMatch) {
+    console.error('❌ Failed to extract slot configs from city-generator.js');
+    process.exit(1);
 }
 
-class ActivitySlot {
-    constructor(id, config = {}) {
-        this.id = id;
-        this.skillTags = config.skillTags || [];
-        this.unlockRule = config.unlockRule || null;
-        this.durationHint = config.durationHint || 60;
-        this.name = config.name || id;
-        this.kind = config.kind || 'activity';
-        this.payoutStub = config.payoutStub || null;
-        this.xpStub = config.xpStub || null;
-        this.repeatable = config.repeatable !== undefined ? config.repeatable : false;
-        this.offerPriority = config.offerPriority !== undefined ? config.offerPriority : 0;
+// Helper to parse slot config object literal
+function parseSlotConfig(code) {
+    const config = {};
+    const lines = code.split('\n');
+    for (const line of lines) {
+        const trimmed = line.trim();
+        if (trimmed.includes('name:')) {
+            config.name = trimmed.match(/name:\s*'([^']+)'/)?.[1];
+        }
+        if (trimmed.includes('skillTags:')) {
+            const tagsMatch = trimmed.match(/skillTags:\s*\[([^\]]+)\]/);
+            if (tagsMatch) {
+                config.skillTags = tagsMatch[1].split(',').map(t => t.trim().replace(/['"]/g, ''));
+            }
+        }
+        if (trimmed.includes('unlockRule:')) {
+            if (trimmed.includes('null')) {
+                config.unlockRule = null;
+            } else {
+                const skillMatch = trimmed.match(/skill:\s*'([^']+)'/);
+                const minXpMatch = trimmed.match(/minXp:\s*(\d+)/);
+                if (skillMatch && minXpMatch) {
+                    config.unlockRule = { skill: skillMatch[1], minXp: parseInt(minXpMatch[1]) };
+                }
+            }
+        }
+        if (trimmed.includes('durationHint:')) {
+            config.durationHint = parseInt(trimmed.match(/durationHint:\s*(\d+)/)?.[1] || '0');
+        }
+        if (trimmed.includes('kind:')) {
+            config.kind = trimmed.match(/kind:\s*'([^']+)'/)?.[1];
+        }
+        if (trimmed.includes('payoutStub:')) {
+            const amountMatch = trimmed.match(/amount:\s*(\d+)/);
+            if (amountMatch) {
+                config.payoutStub = { currency: 'cash', amount: parseInt(amountMatch[1]) };
+            }
+        }
+        if (trimmed.includes('xpStub:')) {
+            const amountMatch = trimmed.match(/amount:\s*(\d+)/);
+            if (amountMatch) {
+                config.xpStub = { amount: parseInt(amountMatch[1]) };
+            }
+        }
+        if (trimmed.includes('repeatable:')) {
+            config.repeatable = trimmed.includes('true');
+        }
+        if (trimmed.includes('offerPriority:')) {
+            config.offerPriority = parseInt(trimmed.match(/offerPriority:\s*(\d+)/)?.[1] || '0');
+        }
     }
-    
-    isUnlocked(skillsStub = null) {
-        if (!this.unlockRule) return true;
-        if (!skillsStub) return false;
-        
-        const { skill, minXp } = this.unlockRule;
-        return skillsStub.getXp(skill) >= minXp;
-    }
+    return config;
 }
 
-class MockPresence {
-    constructor() {
-        this.currentLocation = null;
-        this.listeners = { enter: [], exit: [] };
-    }
-    
-    isAt(locationId) {
-        return this.currentLocation && this.currentLocation.toString() === locationId.toString();
-    }
-    
-    enter(locationId) {
-        this.currentLocation = locationId;
-        this.listeners.enter.forEach(cb => cb({ location: locationId }));
-    }
-    
-    exit(locationId) {
-        this.currentLocation = null;
-        this.listeners.exit.forEach(cb => cb({ location: locationId }));
-    }
-    
-    on(event, callback) {
-        if (this.listeners[event]) {
-            this.listeners[event].push(callback);
-        }
-    }
-}
+const bugfixConfig = parseSlotConfig(bugfixSlotMatch[1]);
+const featureConfig = parseSlotConfig(featureSlotMatch[1]);
 
-class MockCityModule {
-    constructor(presence) {
-        this.locations = new Map();
-        this.presence = presence;
-    }
-    
-    registerLocation(id, slots) {
-        this.locations.set(id.toString(), { getActivitySlots: () => slots });
-    }
-    
-    getLocation(id) {
-        return this.locations.get(id.toString());
-    }
-    
-    getPresence() {
-        return this.presence;
-    }
-}
-
-// Minimal FreelanceSystem with data-driven re-offer logic
-class FreelanceSystem {
-    constructor(cityModule, cafeLocationId, skillsStub) {
-        this.cityModule = cityModule;
-        this.cafeLocationId = cafeLocationId;
-        this.skillsStub = skillsStub;
-        this.currentRun = null;
-        this.cashBalance = 0;
-        this.slotHistory = new Map();
-        this.lockedChipTimeout = null;
-        this.listeners = { jobOffered: [], jobPaid: [], jobLocked: [] };
-        
-        const presence = this.cityModule.getPresence();
-        presence.on('enter', (data) => {
-            if (data.location.toString() === this.cafeLocationId.toString()) {
-                this.checkAndOfferJob();
-            }
-        });
-        
-        presence.on('exit', (data) => {
-            if (data.location.toString() === this.cafeLocationId.toString()) {
-                // Cancel pending locked chip timeout
-                if (this.lockedChipTimeout) {
-                    clearTimeout(this.lockedChipTimeout);
-                    this.lockedChipTimeout = null;
-                }
-                
-                if (this.currentRun && this.currentRun.state === JobState.OFFERED) {
-                    this.currentRun.state = JobState.IDLE;
-                }
-                if (this.currentRun && this.currentRun.state === JobState.IN_PROGRESS) {
-                    this.currentRun.state = JobState.IDLE;
-                }
-            }
-        });
-    }
-    
-    getSlot(slotId) {
-        const location = this.cityModule.getLocation(this.cafeLocationId);
-        if (!location) return null;
-        return location.getActivitySlots().find(s => s.id === slotId);
-    }
-    
-    getAvailableSlots() {
-        const location = this.cityModule.getLocation(this.cafeLocationId);
-        if (!location) return [];
-        
-        return location.getActivitySlots().filter(slot => {
-            if (slot.kind !== 'freelance') return false;
-            if (!slot.isUnlocked(this.skillsStub)) return false;
-            
-            // One-shot slots (repeatable=false) are excluded after being paid
-            if (!slot.repeatable) {
-                const history = this.slotHistory.get(slot.id);
-                if (history && history.state === JobState.PAID) {
-                    return false;
-                }
-            }
-            
-            return true;
-        });
-    }
-    
-    getNextOfferable() {
-        const available = this.getAvailableSlots();
-        if (available.length === 0) return null;
-        
-        // Sort by offerPriority (higher first)
-        available.sort((a, b) => {
-            if (a.offerPriority !== b.offerPriority) {
-                return b.offerPriority - a.offerPriority;
-            }
-            return 0;
-        });
-        
-        return available[0];
-    }
-    
-    getNextLockedSlot() {
-        const location = this.cityModule.getLocation(this.cafeLocationId);
-        if (!location) return null;
-        
-        const slots = location.getActivitySlots();
-        for (const slot of slots) {
-            if (slot.kind !== 'freelance') continue;
-            
-            // Don't show one-shot slots as locked if already paid
-            if (!slot.repeatable) {
-                const history = this.slotHistory.get(slot.id);
-                if (history && history.state === JobState.PAID) {
-                    continue;
-                }
-            }
-            
-            // Return first locked slot (has unlockRule but not met)
-            if (slot.unlockRule && !slot.isUnlocked(this.skillsStub)) {
-                return slot;
-            }
-        }
-        
-        return null;
-    }
-    
-    checkAndOfferJob() {
-        const presence = this.cityModule.getPresence();
-        const isAtLocation = presence.isAt(this.cafeLocationId);
-        const isIdle = !this.currentRun || this.currentRun.state === JobState.IDLE;
-        
-        if (!isIdle || !isAtLocation) return;
-        
-        // Cancel any pending locked chip timeout
-        if (this.lockedChipTimeout) {
-            clearTimeout(this.lockedChipTimeout);
-            this.lockedChipTimeout = null;
-        }
-        
-        // Check if any gated slot is locked
-        const nextLockedSlot = this.getNextLockedSlot();
-        if (nextLockedSlot) {
-            // Show locked chip for 2s, then offer next available gig
-            this.notifyListeners('jobLocked', { slot: nextLockedSlot });
-            
-            this.lockedChipTimeout = setTimeout(() => {
-                this.lockedChipTimeout = null;
-                
-                // Re-check presence and idle state
-                const stillAtLocation = presence.isAt(this.cafeLocationId);
-                const stillIdle = !this.currentRun || this.currentRun.state === JobState.IDLE;
-                
-                if (stillAtLocation && stillIdle) {
-                    const slot = this.getNextOfferable();
-                    if (slot) {
-                        this.currentRun = new JobRun(slot.id);
-                        this.currentRun.state = JobState.OFFERED;
-                        this.notifyListeners('jobOffered', { slotId: slot.id, slot });
-                    }
-                }
-            }, 2000);
-            return;
-        }
-        
-        const slot = this.getNextOfferable();
-        if (slot) {
-            this.currentRun = new JobRun(slot.id);
-            this.currentRun.state = JobState.OFFERED;
-            this.notifyListeners('jobOffered', { slotId: slot.id, slot });
-        }
-    }
-    
-    acceptJob() {
-        if (!this.currentRun || this.currentRun.state !== JobState.OFFERED) return false;
-        this.currentRun.state = JobState.ACCEPTED;
-        return true;
-    }
-    
-    completeJob() {
-        if (!this.currentRun || this.currentRun.state !== JobState.ACCEPTED && this.currentRun.state !== JobState.IN_PROGRESS) return false;
-        this.currentRun.state = JobState.COMPLETED;
-        return true;
-    }
-    
-    payoutJob() {
-        if (!this.currentRun || this.currentRun.state !== JobState.COMPLETED) return null;
-        
-        const slot = this.getSlot(this.currentRun.slotId);
-        if (!slot) return null;
-        
-        this.currentRun.state = JobState.PAID;
-        
-        this.slotHistory.set(this.currentRun.slotId, {
-            state: JobState.PAID,
-            completedAt: Date.now()
-        });
-        
-        const payout = slot.payoutStub;
-        if (payout) {
-            this.cashBalance += payout.amount;
-        }
-        
-        const xpStub = slot.xpStub;
-        const skillTag = slot.skillTags && slot.skillTags.length > 0 ? slot.skillTags[0] : null;
-        
-        let xp = null;
-        if (xpStub && xpStub.amount && skillTag && this.skillsStub) {
-            this.skillsStub.addXp(skillTag, xpStub.amount);
-            xp = { skill: skillTag, amount: xpStub.amount };
-        }
-        
-        this.notifyListeners('jobPaid', { 
-            slotId: this.currentRun.slotId,
-            slot,
-            payout,
-            xp,
-            newBalance: this.cashBalance 
-        });
-        
-        // After payout, reset to IDLE so next gig can be offered
-        this.currentRun.state = JobState.IDLE;
-        
-        return { payout, xp };
-    }
-    
-    on(event, callback) {
-        if (this.listeners[event]) {
-            this.listeners[event].push(callback);
-        }
-    }
-    
-    notifyListeners(event, data) {
-        if (this.listeners[event]) {
-            this.listeners[event].forEach(cb => cb(data));
-        }
-    }
-    
-    getCurrentRun() {
-        return this.currentRun;
-    }
-}
-
-// Test execution
-console.log('=== Freelance Re-Offer Regression Test ===\n');
+console.log('=== Freelance Re-Offer Regression Test (Real Source) ===\n');
+console.log('Loaded café slots from src/city/city-generator.js:');
+console.log(`  cafe-bugfix-1: $${bugfixConfig.payoutStub.amount}, repeatable=${bugfixConfig.repeatable}`);
+console.log(`  cafe-feature-1: $${featureConfig.payoutStub.amount}, priority=${featureConfig.offerPriority}, repeatable=${featureConfig.repeatable !== false ? 'default(false)' : false}\n`);
 
 let passed = 0;
 let failed = 0;
@@ -342,33 +143,21 @@ function assert(condition, testName) {
 
 // Setup
 const skillsStub = new SkillsStub();
-const presence = new MockPresence();
-const cityModule = new MockCityModule(presence);
-const cafeLocationId = 'the-bean-cafe';
+const cityModule = new CityModule();
+const districtId = 'downtown';
+const cafeLocationId = new LocationId(districtId, 'the-bean-cafe');
 
-const bugfixSlot = new ActivitySlot('cafe-bugfix-1', {
-    name: 'Quick bugfix',
-    skillTags: ['coding'],
-    unlockRule: null,
-    durationHint: 30,
-    kind: 'freelance',
-    payoutStub: { currency: 'cash', amount: 50 },
-    xpStub: { amount: 10 },
-    repeatable: true
+const bugfixSlot = new ActivitySlot('cafe-bugfix-1', bugfixConfig);
+const featureSlot = new ActivitySlot('cafe-feature-1', featureConfig);
+
+const cafeLocation = new LocationData(cafeLocationId, BuildingKind.CAFE, {
+    name: 'The Bean Café',
+    unlockState: UnlockState.AVAILABLE,
+    position: new pc.Vec3(-10, 0, 15),
+    activitySlots: [bugfixSlot, featureSlot]
 });
 
-const featureSlot = new ActivitySlot('cafe-feature-1', {
-    name: 'Small feature patch',
-    skillTags: ['coding'],
-    unlockRule: { skill: 'design', minXp: 10 },
-    durationHint: 45,
-    kind: 'freelance',
-    payoutStub: { currency: 'cash', amount: 120 },
-    xpStub: { amount: 15 },
-    offerPriority: 10
-});
-
-cityModule.registerLocation(cafeLocationId, [bugfixSlot, featureSlot]);
+cityModule.registerLocation(cafeLocation);
 
 const freelanceSystem = new FreelanceSystem(cityModule, cafeLocationId, skillsStub);
 
@@ -386,8 +175,9 @@ freelanceSystem.on('jobOffered', (data) => {
     offerCount++;
 });
 
-console.log('Test 1: Enter cafe at design XP=5 shows locked chip');
+console.log('Test 1: Enter café at design XP=5 shows locked chip');
 skillsStub.addXp('design', 5);
+const presence = cityModule.getPresence();
 presence.enter(cafeLocationId);
 
 setTimeout(() => {
@@ -401,12 +191,12 @@ setTimeout(() => {
         
         console.log('\nTest 3: Complete and pay bugfix');
         freelanceSystem.acceptJob();
-        freelanceSystem.currentRun.state = JobState.IN_PROGRESS;
+        freelanceSystem.currentRun.state = 'inProgress';
         freelanceSystem.completeJob();
         const result1 = freelanceSystem.payoutJob();
         assert(result1.payout.amount === 50, '3a: Bugfix paid $50');
         assert(result1.xp.amount === 10, '3b: Bugfix gave +10 coding XP');
-        assert(freelanceSystem.currentRun.state === JobState.IDLE, '3c: After payout, state is IDLE');
+        assert(freelanceSystem.currentRun.state === 'idle', '3c: After payout, state is IDLE');
         
         console.log('\nTest 4: Exit within 2s cancels timeout');
         presence.exit(cafeLocationId);
@@ -423,7 +213,7 @@ setTimeout(() => {
             setTimeout(() => {
                 assert(offerCount === 0, '4a: No offer fired after early exit');
                 
-                console.log('\nTest 5: Re-enter cafe - locked chip shows again, then bugfix offered (repeatable)');
+                console.log('\nTest 5: Re-enter café - locked chip shows again, then bugfix offered (repeatable)');
                 lastOfferedSlot = null;
                 lastLockedSlot = null;
                 offerCount = 0;
@@ -455,7 +245,7 @@ setTimeout(() => {
                                 
                                 console.log('\nTest 7: Accept and pay feature gig');
                                 freelanceSystem.acceptJob();
-                                freelanceSystem.currentRun.state = JobState.IN_PROGRESS;
+                                freelanceSystem.currentRun.state = 'inProgress';
                                 freelanceSystem.completeJob();
                                 const result2 = freelanceSystem.payoutJob();
                                 assert(result2.payout.amount === 120, '7a: Feature paid $120');
@@ -482,6 +272,9 @@ setTimeout(() => {
                                         
                                         if (failed === 0) {
                                             console.log('\n✅ All tests passed!');
+                                            console.log('\nUsing REAL FreelanceSystem from src/systems/freelance-system.js');
+                                            console.log('Using REAL CityModule from src/core/city-module.js');
+                                            console.log('Using REAL slot configs from src/city/city-generator.js');
                                             process.exit(0);
                                         } else {
                                             console.log(`\n❌ ${failed} test(s) failed`);
