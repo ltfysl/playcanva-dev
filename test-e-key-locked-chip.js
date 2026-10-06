@@ -1,5 +1,5 @@
 // Test E key during 2s locked chip window
-// Uses REAL GameManager.handleInteraction and REAL SolHUD
+// Uses REAL GameManager.handleInteraction via .call() and REAL SolHUD
 // Run with: node test-e-key-locked-chip.js
 
 const fs = require('fs');
@@ -54,7 +54,10 @@ function loadModule(path, exportNames) {
 const solHudModule = loadModule('./src/ui/sol-hud.js', ['SolHUD']);
 const { SolHUD } = solHudModule;
 
-console.log('=== E Key During Locked Chip Test (Real SolHUD) ===\n');
+const gameManagerModule = loadModule('./src/core/game-manager.js', ['GameManager']);
+const { GameManager } = gameManagerModule;
+
+console.log('=== E Key During Locked Chip Test (Real GameManager.handleInteraction) ===\n');
 
 let passed = 0;
 let failed = 0;
@@ -69,97 +72,143 @@ function assert(condition, testName) {
     }
 }
 
-// Simplified GameManager.handleInteraction logic (the part we're testing)
-class TestGameManager {
-    constructor() {
-        this.solHUD = new SolHUD();
-        global.testHudElement = this.solHUD.element;
-        this.isInBuilding = false;
-        this.exitCalled = false;
-    }
-    
-    handleInteraction() {
-        if (this.isInBuilding) {
-            // This is the real logic from game-manager.js
-            // Don't exit during locked chip display (wait for actual offer)
-            const hudState = this.solHUD ? this.solHUD.getCurrentState() : null;
-            if (hudState === 'locked') {
-                return;
-            }
-            
-            if (this.tryRunnerInteraction()) {
-                return;
-            }
-            this.exitBuilding();
-        }
-    }
-    
-    tryRunnerInteraction() {
-        // Simplified - just check if HUD is offered
-        return this.solHUD.getCurrentState() === 'offered';
-    }
+console.log('Test 1: E key during locked chip does nothing (stays in building)');
+
+const solHUD1 = new SolHUD();
+global.testHudElement = solHUD1.element;
+
+const fakeThis1 = {
+    isInBuilding: true,
+    solHUD: solHUD1,
+    exitCalled: false,
+    tryRunnerInteractionCalled: false,
+    tryEnterBuildingCalled: false,
     
     exitBuilding() {
         this.exitCalled = true;
         this.isInBuilding = false;
+    },
+    
+    tryRunnerInteraction() {
+        this.tryRunnerInteractionCalled = true;
+        return false; // No runner wants to handle it
+    },
+    
+    tryEnterBuilding() {
+        this.tryEnterBuildingCalled = true;
     }
-}
+};
 
-console.log('Test 1: E key during locked chip does nothing (stays in building)');
-const gm = new TestGameManager();
-gm.isInBuilding = true;
-gm.solHUD.showLocked({ skill: 'design', minXp: 10 }, { getXp: () => 5 });
+solHUD1.showLocked({ skill: 'design', minXp: 10 }, { getXp: () => 5 });
 
-assert(gm.isInBuilding === true, '1a: Initially in building');
-assert(gm.solHUD.getCurrentState() === 'locked', '1b: HUD showing locked chip');
-assert(gm.solHUD.element.style.opacity === '1', '1c: HUD visible');
+assert(fakeThis1.isInBuilding === true, '1a: Initially in building');
+assert(solHUD1.getCurrentState() === 'locked', '1b: HUD showing locked chip');
+assert(solHUD1.element.style.opacity === '1', '1c: HUD visible');
 
-gm.handleInteraction(); // E key pressed
+// Call the REAL handleInteraction with our fake context
+GameManager.prototype.handleInteraction.call(fakeThis1);
 
-assert(gm.isInBuilding === true, '1d: Still in building after E press');
-assert(gm.exitCalled === false, '1e: exitBuilding was not called');
-assert(gm.solHUD.getCurrentState() === 'locked', '1f: HUD state still locked');
+assert(fakeThis1.isInBuilding === true, '1d: Still in building after E press');
+assert(fakeThis1.exitCalled === false, '1e: exitBuilding was not called');
+assert(fakeThis1.tryRunnerInteractionCalled === false, '1f: tryRunnerInteraction was not called (blocked by locked check)');
+assert(solHUD1.getCurrentState() === 'locked', '1g: HUD state still locked');
 
-console.log('\nTest 2: E key during offered state does trigger interaction');
-const gm2 = new TestGameManager();
-gm2.isInBuilding = true;
-gm2.solHUD.showJobOffer('Quick bugfix', 50);
+console.log('\nTest 2: E key during offered state does call tryRunnerInteraction');
 
-assert(gm2.solHUD.getCurrentState() === 'offered', '2a: HUD showing offered');
-assert(gm2.solHUD.element.style.opacity === '1', '2b: HUD visible');
+const solHUD2 = new SolHUD();
+global.testHudElement = solHUD2.element;
 
-const interactionTriggered = gm2.tryRunnerInteraction();
-assert(interactionTriggered === true, '2c: tryRunnerInteraction returns true for offered');
+const fakeThis2 = {
+    isInBuilding: true,
+    solHUD: solHUD2,
+    exitCalled: false,
+    tryRunnerInteractionCalled: false,
+    
+    exitBuilding() {
+        this.exitCalled = true;
+        this.isInBuilding = false;
+    },
+    
+    tryRunnerInteraction() {
+        this.tryRunnerInteractionCalled = true;
+        return true; // Runner handled it
+    },
+    
+    tryEnterBuilding() {}
+};
+
+solHUD2.showJobOffer('Quick bugfix', 50);
+
+assert(solHUD2.getCurrentState() === 'offered', '2a: HUD showing offered');
+assert(solHUD2.element.style.opacity === '1', '2b: HUD visible');
+
+GameManager.prototype.handleInteraction.call(fakeThis2);
+
+assert(fakeThis2.tryRunnerInteractionCalled === true, '2c: tryRunnerInteraction was called');
+assert(fakeThis2.exitCalled === false, '2d: exitBuilding was not called (runner handled it)');
 
 console.log('\nTest 3: E key with no HUD state (normal exit)');
-const gm3 = new TestGameManager();
-gm3.isInBuilding = true;
-gm3.solHUD.hide();
 
-assert(gm3.solHUD.getCurrentState() === null, '3a: HUD state is null');
-assert(gm3.solHUD.element.style.opacity === '0', '3b: HUD hidden');
+const solHUD3 = new SolHUD();
+global.testHudElement = solHUD3.element;
 
-gm3.handleInteraction(); // E key pressed
+const fakeThis3 = {
+    isInBuilding: true,
+    solHUD: solHUD3,
+    exitCalled: false,
+    tryRunnerInteractionCalled: false,
+    
+    exitBuilding() {
+        this.exitCalled = true;
+        this.isInBuilding = false;
+    },
+    
+    tryRunnerInteraction() {
+        this.tryRunnerInteractionCalled = true;
+        return false; // No runner wants to handle it
+    },
+    
+    tryEnterBuilding() {}
+};
 
-assert(gm3.isInBuilding === false, '3c: Exited building');
-assert(gm3.exitCalled === true, '3d: exitBuilding was called');
+solHUD3.hide();
 
-console.log('\nTest 4: Locked state transitions to offered do not block E key');
-const gm4 = new TestGameManager();
-gm4.isInBuilding = true;
-gm4.solHUD.showLocked({ skill: 'design', minXp: 10 }, { getXp: () => 5 });
+assert(solHUD3.getCurrentState() === null, '3a: HUD state is null');
+assert(solHUD3.element.style.opacity === '0', '3b: HUD hidden');
 
-// First E press does nothing
-gm4.handleInteraction();
-assert(gm4.isInBuilding === true, '4a: Still in building during locked');
+GameManager.prototype.handleInteraction.call(fakeThis3);
 
-// Now transition to offered
-gm4.solHUD.showJobOffer('Quick bugfix', 50);
-assert(gm4.solHUD.getCurrentState() === 'offered', '4b: State changed to offered');
+assert(fakeThis3.tryRunnerInteractionCalled === true, '3c: tryRunnerInteraction was called');
+assert(fakeThis3.isInBuilding === false, '3d: Exited building');
+assert(fakeThis3.exitCalled === true, '3e: exitBuilding was called');
 
-// E press should trigger interaction
-const triggered = gm4.tryRunnerInteraction();
-assert(triggered === true, '4c: E key triggers interaction when offered');
+console.log('\nTest 4: Not in building calls tryEnterBuilding');
+
+const solHUD4 = new SolHUD();
+global.testHudElement = solHUD4.element;
+
+const fakeThis4 = {
+    isInBuilding: false,
+    solHUD: solHUD4,
+    tryEnterBuildingCalled: false,
+    tryRunnerInteractionCalled: false,
+    
+    tryRunnerInteraction() {
+        this.tryRunnerInteractionCalled = true;
+        return false;
+    },
+    
+    tryEnterBuilding() {
+        this.tryEnterBuildingCalled = true;
+    },
+    
+    exitBuilding() {}
+};
+
+GameManager.prototype.handleInteraction.call(fakeThis4);
+
+assert(fakeThis4.tryRunnerInteractionCalled === true, '4a: tryRunnerInteraction called first');
+assert(fakeThis4.tryEnterBuildingCalled === true, '4b: tryEnterBuilding was called');
 
 console.log('\n=== Summary ===');
 console.log(`Passed: ${passed}`);
@@ -169,7 +218,9 @@ console.log(`Total: ${passed + failed}`);
 if (failed === 0) {
     console.log('\n✅ All tests passed!');
     console.log('\nUsing REAL SolHUD from src/ui/sol-hud.js');
-    console.log('Using REAL GameManager.handleInteraction logic (locked state check)');
+    console.log('Using REAL GameManager.prototype.handleInteraction via .call()');
+    console.log('\nMutation check: This test FAILS if the hudState === \'locked\' guard');
+    console.log('is removed from GameManager.handleInteraction in src/core/game-manager.js');
     process.exit(0);
 } else {
     console.log(`\n❌ ${failed} test(s) failed`);
