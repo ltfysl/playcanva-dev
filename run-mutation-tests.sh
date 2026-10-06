@@ -8,12 +8,13 @@ echo "=== Mutation Testing for Slice-11 Design Gate ==="
 echo ""
 
 restore_files() {
+    git checkout -- src/ 2>/dev/null || true
     rm -f src/systems/freelance-system.js.backup
     rm -f src/city/city-generator.js.backup
     rm -f src/core/game-manager.js.backup
 }
 
-trap restore_files EXIT
+trap restore_files EXIT INT TERM
 
 abort_mutation() {
     echo "❌ MUTATION FAILED: $1"
